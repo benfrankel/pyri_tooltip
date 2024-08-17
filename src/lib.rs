@@ -130,7 +130,7 @@ fn update_tooltip_context(
         };
         let window = c!(window_query.get(window));
         cq!(window.focused);
-        let cursor_pos = c!(window
+        let cursor_pos = cq!(window
             .cursor_position()
             .and_then(|cursor| camera.viewport_to_world_2d(camera_gt, cursor)));
 
@@ -178,7 +178,7 @@ fn update_tooltip_context(
             Interaction::Hovered => (),
             Interaction::None => continue,
         };
-        r!(matches!(ctx.state, TooltipState::Inactive) || ctx.target != entity);
+        rq!(matches!(ctx.state, TooltipState::Inactive) || ctx.target != entity);
 
         // Switch to the new target entity.
         ctx.target = entity;
