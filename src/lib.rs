@@ -195,6 +195,7 @@ fn update_tooltip_context(
         };
         ctx.timer = tooltip.activation.delay;
         ctx.activation = tooltip.activation;
+        ctx.activation.radius *= ctx.activation.radius;
         ctx.transfer = tooltip.transfer;
 
         return;
@@ -202,12 +203,12 @@ fn update_tooltip_context(
 
     // There is no target entity.
     if !matches!(ctx.state, TooltipState::Inactive) {
-        ctx.state = TooltipState::Inactive;
         ctx.timer = if matches!(ctx.state, TooltipState::Active) || !ctx.transfer.from_active {
             ctx.transfer.timeout
         } else {
             0
         };
+        ctx.state = TooltipState::Inactive;
     }
 }
 
