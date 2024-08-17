@@ -1,5 +1,13 @@
 //! TODO
 
+/// TODO
+pub mod prelude {
+    pub use super::{
+        PrimaryTooltip, Tooltip, TooltipActivation, TooltipEntity, TooltipPlacement, TooltipPlugin,
+        TooltipTransfer,
+    };
+}
+
 use bevy_app::{Plugin, PreUpdate};
 use bevy_core::Name;
 #[cfg(feature = "bevy_reflect")]
