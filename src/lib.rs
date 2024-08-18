@@ -46,16 +46,15 @@ use tiny_bail::prelude::*;
 #[derive(Default)]
 pub struct TooltipPlugin {
     /// Set a custom entity for [`PrimaryTooltip::container`], or spawn a default entity if `None`.
-    pub container_entity: Option<Entity>,
+    pub container: Option<Entity>,
     /// Set a custom entity for [`PrimaryTooltip::text`], or spawn a default entity if `None`.
-    pub text_entity: Option<Entity>,
+    pub text: Option<Entity>,
 }
 
 impl Plugin for TooltipPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.register_type::<PrimaryTooltip>();
-        let primary_tooltip =
-            PrimaryTooltip::new(app.world_mut(), self.container_entity, self.text_entity);
+        let primary_tooltip = PrimaryTooltip::new(app.world_mut(), self.container, self.text);
         app.insert_resource(primary_tooltip);
 
         app.register_type::<Tooltip>();
