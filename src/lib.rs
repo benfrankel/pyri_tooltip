@@ -9,6 +9,7 @@ pub mod prelude {
 }
 
 use bevy_app::{Plugin, PostUpdate, PreUpdate};
+use bevy_color::Color;
 use bevy_core::Name;
 #[cfg(feature = "bevy_reflect")]
 use bevy_ecs::reflect::{ReflectComponent, ReflectResource};
@@ -31,7 +32,10 @@ use bevy_render::{
 use bevy_sprite::Anchor;
 use bevy_text::{Text, TextSection, TextStyle};
 use bevy_time::Time;
-use bevy_transform::components::{GlobalTransform, Transform};
+use bevy_transform::{
+    components::{GlobalTransform, Transform},
+    TransformSystem,
+};
 use bevy_ui::{
     node_bundles::{NodeBundle, TextBundle},
     Interaction, Node, PositionType, Style, UiRect, UiStack, UiSystem, Val, ZIndex,
@@ -59,20 +63,22 @@ impl Plugin for TooltipPlugin {
 
         app.register_type::<TooltipContext>();
         app.init_resource::<TooltipContext>();
-        // TODO: Make sure this runs after `Interaction` is updated.
-        app.add_systems(PreUpdate, sync_tooltip_context);
-
         app.add_event::<UpdateTooltip>();
+
+        app.add_systems(
+            PreUpdate,
+            (
+                update_tooltip_context,
+                update_tooltip_display.run_if(on_event::<UpdateTooltip>()),
+            )
+                .chain(),
+        );
         app.add_systems(
             PostUpdate,
-            (
-                update_tooltip_display
-                    .run_if(on_event::<UpdateTooltip>())
-                    .before(UiSystem::Layout),
-                update_tooltip_position
-                    .run_if(on_event::<UpdateTooltip>())
-                    .after(UiSystem::Layout),
-            ),
+            update_tooltip_position
+                .run_if(on_event::<UpdateTooltip>())
+                .after(UiSystem::Layout)
+                .before(TransformSystem::TransformPropagate),
         );
     }
 }
@@ -100,10 +106,10 @@ impl PrimaryTooltip {
                     NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,
-                            max_width: Val::Vw(40.0),
                             padding: UiRect::all(Val::Px(8.0)),
                             ..Default::default()
                         },
+                        background_color: Color::srgba(0.5, 0.5, 0.5, 0.9).into(),
                         visibility: Visibility::Hidden,
                         z_index: ZIndex::Global(999),
                         ..Default::default()
@@ -254,9 +260,9 @@ impl Default for TooltipTransfer {
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub struct TooltipPlacement {
     /// The anchor point on the tooltip entity.
-    pub anchor: Anchor,
+    pub tooltip_anchor: Anchor,
     /// The target position expressed as an anchor point on the target entity, or `None` to use the cursor position instead.
-    pub target: Option<Anchor>,
+    pub target_anchor: Option<Anchor>,
     /// An additional horizontal offset for the tooltip entity.
     pub offset_x: Val,
     /// An additional vertical offset for the tooltip entity.
@@ -268,8 +274,8 @@ pub struct TooltipPlacement {
 impl TooltipPlacement {
     /// The default `TooltipPlacement`.
     pub const DEFAULT: Self = Self {
-        anchor: Anchor::TopLeft,
-        target: None,
+        tooltip_anchor: Anchor::TopLeft,
+        target_anchor: None,
         offset_x: Val::Px(16.0),
         offset_y: Val::Px(16.0),
         clamp_padding: UiRect::all(Val::ZERO),
@@ -306,12 +312,14 @@ struct TooltipContext {
     target: Entity,
     /// The remaining duration of the current activation delay or transfer timeout (in milliseconds).
     timer: u16,
+    /// The current cursor position or activation point.
+    cursor_pos: Vec2,
     /// The current activation conditions.
     activation: TooltipActivation,
     /// The current transfer conditions.
     transfer: TooltipTransfer,
-    /// The current cursor position or activation point.
-    cursor_pos: Vec2,
+    /// The tooltip container entity.
+    entity: TooltipEntity,
 }
 
 impl Default for TooltipContext {
@@ -320,28 +328,29 @@ impl Default for TooltipContext {
             state: TooltipState::Inactive,
             target: Entity::PLACEHOLDER,
             timer: 0,
+            cursor_pos: Vec2::ZERO,
             activation: TooltipActivation::DEFAULT,
             transfer: TooltipTransfer::DEFAULT,
-            cursor_pos: Vec2::ZERO,
+            entity: TooltipEntity::Custom(Entity::PLACEHOLDER),
         }
     }
 }
 
-fn sync_tooltip_context(
+fn update_tooltip_context(
     mut ctx: ResMut<TooltipContext>,
     mut update_tooltip: EventWriter<UpdateTooltip>,
     time: Res<Time>,
     ui_stack: Res<UiStack>,
     primary_window_query: Query<Entity, With<PrimaryWindow>>,
     window_query: Query<&Window>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
+    camera_query: Query<&Camera>,
     interaction_query: Query<(&Tooltip, &Interaction)>,
 ) {
     let old_active = matches!(ctx.state, TooltipState::Active);
     let old_target = ctx.target;
 
     // Detect cursor movement.
-    for (camera, camera_gt) in &camera_query {
+    for camera in &camera_query {
         let RenderTarget::Window(window) = camera.target else {
             continue;
         };
@@ -351,9 +360,7 @@ fn sync_tooltip_context(
         };
         let window = c!(window_query.get(window));
         cq!(window.focused);
-        let cursor_pos = cq!(window
-            .cursor_position()
-            .and_then(|cursor| camera.viewport_to_world_2d(camera_gt, cursor)));
+        let cursor_pos = cq!(window.cursor_position());
 
         // Reset activation delay on cursor move.
         if ctx.cursor_pos != cursor_pos
@@ -387,6 +394,7 @@ fn sync_tooltip_context(
     }
 
     // Find the highest entity in the `UiStack` that has a tooltip and is being interacted with.
+    let mut found_target = false;
     for &entity in ui_stack.uinodes.iter().rev() {
         let (tooltip, interaction) = cq!(interaction_query.get(entity));
         match interaction {
@@ -394,12 +402,16 @@ fn sync_tooltip_context(
                 ctx.target = entity;
                 ctx.state = TooltipState::Dismissed;
                 ctx.transfer = tooltip.transfer;
-                return;
+                found_target = true;
+                break;
             }
             Interaction::Hovered => (),
             Interaction::None => continue,
         };
-        rq!(matches!(ctx.state, TooltipState::Inactive) || ctx.target != entity);
+        if !(matches!(ctx.state, TooltipState::Inactive) || ctx.target != entity) {
+            found_target = true;
+            break;
+        }
 
         // Switch to the new target entity.
         ctx.target = entity;
@@ -418,12 +430,13 @@ fn sync_tooltip_context(
         ctx.activation = tooltip.activation;
         ctx.activation.radius *= ctx.activation.radius;
         ctx.transfer = tooltip.transfer;
-
-        return;
+        ctx.entity = tooltip.entity.clone();
+        found_target = true;
+        break;
     }
 
-    // There is no target entity.
-    if !matches!(ctx.state, TooltipState::Inactive) {
+    // There is no longer a target entity.
+    if !found_target && !matches!(ctx.state, TooltipState::Inactive) {
         ctx.timer = if matches!(ctx.state, TooltipState::Active) || !ctx.transfer.from_active {
             ctx.transfer.timeout
         } else {
@@ -458,19 +471,19 @@ enum TooltipState {
 struct UpdateTooltip;
 
 fn update_tooltip_display(
-    ctx: Res<TooltipContext>,
-    target_query: Query<&Tooltip>,
+    mut ctx: ResMut<TooltipContext>,
     primary: Res<PrimaryTooltip>,
     mut tooltip_query: Query<&mut Visibility>,
     mut text_query: Query<&mut Text>,
 ) {
-    let tooltip = r!(target_query.get(ctx.target));
-    let entity = match &tooltip.entity {
+    let entity = match &mut ctx.entity {
         TooltipEntity::Primary(text) => {
-            *r!(text_query.get_mut(primary.text)) = text.clone();
+            if let Ok(mut primary_text) = text_query.get_mut(primary.text) {
+                *primary_text = std::mem::take(text);
+            }
             primary.container
         }
-        &TooltipEntity::Custom(id) => id,
+        &mut TooltipEntity::Custom(id) => id,
     };
     let mut visibility = r!(tooltip_query.get_mut(entity));
 
@@ -482,10 +495,12 @@ fn update_tooltip_display(
 
 fn update_tooltip_position(
     ctx: Res<TooltipContext>,
+    window_query: Query<&Window>,
     target_query: Query<(&Tooltip, &GlobalTransform, &Node)>,
     primary: Res<PrimaryTooltip>,
     mut tooltip_query: Query<(&mut Style, &mut Transform, &GlobalTransform, &Node)>,
 ) {
+    rq!(matches!(ctx.state, TooltipState::Active));
     let (tooltip, target_gt, target_node) = r!(target_query.get(ctx.target));
     let entity = match &tooltip.entity {
         TooltipEntity::Primary(_) => primary.container,
@@ -493,33 +508,82 @@ fn update_tooltip_position(
     };
     let (mut style, mut transform, gt, node) = r!(tooltip_query.get_mut(entity));
 
-    // Convert target anchor to a window-space offset.
-    let target_rect = target_node.logical_rect(target_gt);
-    let target_anchor = if let Some(anchor) = tooltip.placement.target {
-        target_rect.size() * anchor.as_vec()
+    // Calculate target position.
+    let mut pos = if let Some(target_anchor) = tooltip.placement.target_anchor {
+        let target_rect = target_node.logical_rect(target_gt);
+        target_rect.center() - target_rect.size() * target_anchor.as_vec() * Vec2::new(-1.0, 1.0)
     } else {
         ctx.cursor_pos
     };
 
-    // Convert tooltip anchor to a window-space offset.
+    // Apply tooltip anchor to target position.
     let tooltip_rect = node.logical_rect(gt);
-    let tooltip_anchor = tooltip_rect.size() * tooltip.placement.anchor.as_vec();
+    let tooltip_anchor =
+        tooltip_rect.size() * tooltip.placement.tooltip_anchor.as_vec() * Vec2::new(-1.0, 1.0);
+    pos += tooltip_anchor;
 
-    // Calculate the combined anchor (adjusted by bonus offset).
-    // TODO: Calculate offset from `tooltip.placement.offset_{x,y}`.
-    let offset = Vec2::ZERO;
-    let anchor = tooltip_anchor - target_anchor + offset;
+    // Apply offset and clamping to target position.
+    for window in &window_query {
+        cq!(window.focused);
 
-    // Convert to absolute position.
-    // TODO: If using cursor position, this will be incorrect.
-    let center = target_rect.center() + anchor;
-    let top_left = center - tooltip_rect.half_size();
+        // Resolve offset `Val`s.
+        let size = window.resolution.size();
+        let offset_x = tooltip
+            .placement
+            .offset_x
+            .resolve(size.x, size)
+            .unwrap_or_default();
+        let offset_y = tooltip
+            .placement
+            .offset_y
+            .resolve(size.y, size)
+            .unwrap_or_default();
+
+        // Apply offset.
+        pos += Vec2::new(offset_x, offset_y);
+
+        // Resolve clamp padding `Val`s.
+        let UiRect {
+            left,
+            right,
+            top,
+            bottom,
+        } = tooltip.placement.clamp_padding;
+        let left = left.resolve(size.x, size).unwrap_or_default();
+        let right = right.resolve(size.x, size).unwrap_or_default();
+        let top = top.resolve(size.x, size).unwrap_or_default();
+        let bottom = bottom.resolve(size.x, size).unwrap_or_default();
+
+        // Apply clamping.
+        let half_size = tooltip_rect.half_size();
+        let mut left = half_size.x + left;
+        let mut right = size.x - half_size.x - right;
+        if left > right {
+            let mid = (left + right) / 2.0;
+            left = mid;
+            right = mid;
+        }
+        let mut top = half_size.y + top;
+        let mut bottom = size.y - half_size.y - bottom;
+        if top > bottom {
+            let mid = (top + bottom) / 2.0;
+            top = mid;
+            bottom = mid;
+        }
+        pos = pos.clamp(Vec2::new(left, top), Vec2::new(right, bottom));
+
+        break;
+    }
+
+    // Set position via `Style`.
+    let top_left = pos - tooltip_rect.half_size();
     style.top = Val::Px(top_left.y);
     style.left = Val::Px(top_left.x);
 
+    // Set position via `Transform`.
     // This system has to run after `UiSystem::Layout` so that its size is calculated
     // from the updated text. However, that means that `Style` positioning will be
     // delayed by 1 frame. As a workaround, update the `Transform` directly as well.
-    transform.translation.x = center.x;
-    transform.translation.y = center.y;
+    transform.translation.x = pos.x;
+    transform.translation.y = pos.y;
 }
