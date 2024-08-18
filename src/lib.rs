@@ -16,10 +16,9 @@ use bevy_ecs::reflect::{ReflectComponent, ReflectResource};
 use bevy_ecs::{
     component::Component,
     entity::Entity,
-    event::{Event, EventWriter},
+    event::{Event, EventReader, EventWriter},
     query::With,
-    schedule::common_conditions::on_event,
-    schedule::IntoSystemConfigs as _,
+    schedule::{common_conditions::on_event, IntoSystemConfigs as _},
     system::{Query, Res, ResMut, Resource},
     world::World,
 };
@@ -63,20 +62,21 @@ impl Plugin for TooltipPlugin {
 
         app.register_type::<TooltipContext>();
         app.init_resource::<TooltipContext>();
-        app.add_event::<UpdateTooltip>();
-
+        app.add_event::<HideTooltip>();
+        app.add_event::<ShowTooltip>();
         app.add_systems(
             PreUpdate,
             (
                 update_tooltip_context,
-                update_tooltip_display.run_if(on_event::<UpdateTooltip>()),
+                hide_tooltip.run_if(on_event::<HideTooltip>()),
+                show_tooltip.run_if(on_event::<ShowTooltip>()),
             )
                 .chain(),
         );
         app.add_systems(
             PostUpdate,
-            update_tooltip_position
-                .run_if(on_event::<UpdateTooltip>())
+            place_tooltip
+                .run_if(on_event::<ShowTooltip>())
                 .after(UiSystem::Layout)
                 .before(TransformSystem::TransformPropagate),
         );
@@ -338,7 +338,9 @@ impl Default for TooltipContext {
 
 fn update_tooltip_context(
     mut ctx: ResMut<TooltipContext>,
-    mut update_tooltip: EventWriter<UpdateTooltip>,
+    mut hide_tooltip: EventWriter<HideTooltip>,
+    mut show_tooltip: EventWriter<ShowTooltip>,
+    primary: Res<PrimaryTooltip>,
     time: Res<Time>,
     ui_stack: Res<UiStack>,
     primary_window_query: Query<Entity, With<PrimaryWindow>>,
@@ -348,6 +350,10 @@ fn update_tooltip_context(
 ) {
     let old_active = matches!(ctx.state, TooltipState::Active);
     let old_target = ctx.target;
+    let old_entity = match ctx.entity {
+        TooltipEntity::Primary(_) => primary.container,
+        TooltipEntity::Custom(id) => id,
+    };
 
     // Detect cursor movement.
     for camera in &camera_query {
@@ -447,8 +453,11 @@ fn update_tooltip_context(
 
     // Update tooltip if it was activated, dismissed, or changed targets.
     let new_active = matches!(ctx.state, TooltipState::Active);
-    if old_active != new_active || (new_active && old_target != ctx.target) {
-        update_tooltip.send(UpdateTooltip);
+    if old_active != new_active || old_target != ctx.target {
+        hide_tooltip.send(HideTooltip { entity: old_entity });
+        if new_active {
+            show_tooltip.send(ShowTooltip);
+        }
     }
 }
 
@@ -466,34 +475,44 @@ enum TooltipState {
     Dismissed,
 }
 
-/// A buffered event sent whenever the tooltip needs to be updated.
+/// A buffered event sent when a tooltip should be hidden.
 #[derive(Event)]
-struct UpdateTooltip;
+struct HideTooltip {
+    entity: Entity,
+}
 
-fn update_tooltip_display(
+fn hide_tooltip(
+    mut hide_tooltip: EventReader<HideTooltip>,
+    mut visibility_query: Query<&mut Visibility>,
+) {
+    for event in hide_tooltip.read() {
+        *cq!(visibility_query.get_mut(event.entity)) = Visibility::Hidden;
+    }
+}
+
+/// A buffered event sent when a tooltip should be shown.
+#[derive(Event)]
+struct ShowTooltip;
+
+fn show_tooltip(
     mut ctx: ResMut<TooltipContext>,
     primary: Res<PrimaryTooltip>,
-    mut tooltip_query: Query<&mut Visibility>,
     mut text_query: Query<&mut Text>,
+    mut visibility_query: Query<&mut Visibility>,
 ) {
     let entity = match &mut ctx.entity {
-        TooltipEntity::Primary(text) => {
+        TooltipEntity::Primary(ref mut text) => {
             if let Ok(mut primary_text) = text_query.get_mut(primary.text) {
                 *primary_text = std::mem::take(text);
             }
             primary.container
         }
-        &mut TooltipEntity::Custom(id) => id,
+        TooltipEntity::Custom(id) => *id,
     };
-    let mut visibility = r!(tooltip_query.get_mut(entity));
-
-    *visibility = match ctx.state {
-        TooltipState::Active => Visibility::Visible,
-        _ => Visibility::Hidden,
-    };
+    *r!(visibility_query.get_mut(entity)) = Visibility::Visible;
 }
 
-fn update_tooltip_position(
+fn place_tooltip(
     ctx: Res<TooltipContext>,
     window_query: Query<&Window>,
     target_query: Query<(&Tooltip, &GlobalTransform, &Node)>,
