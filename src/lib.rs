@@ -23,6 +23,13 @@
 //!     Tooltip::from_section("Hello, world!", TextStyle::default()),
 //! ));
 //! ```
+//!
+//! # Advanced
+//!
+//! To customize tooltip behavior, see [`Tooltip`].
+//!
+//! To set a custom primary tooltip, see [`TooltipPlugin`] and [`PrimaryTooltip`].
+//! For fully custom per-entity tooltips, use [`TooltipEntity::Custom`].
 
 mod context;
 mod placement;
