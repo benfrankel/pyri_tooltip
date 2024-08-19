@@ -1,4 +1,4 @@
-//! Featureful tooltips for Bevy.
+//! Powerful tooltips for Bevy.
 //!
 //! # Getting started
 //!

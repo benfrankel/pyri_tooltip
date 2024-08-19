@@ -2,7 +2,7 @@
 name = "pyri_tooltip"
 version = "0.1.0"
 edition = "2021"
-description = "Featureful tooltip plugin for Bevy"
+description = "Powerful tooltips for Bevy"
 repository = "https://github.com/benfrankel/pyri_tooltip"
 license = "MIT OR Apache-2.0"
 keywords = ["ui", "game", "bevy"]
