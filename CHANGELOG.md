@@ -2,6 +2,6 @@
 
 - **Initial release**
 - Added `TooltipPlugin` plugin
-- Added `Tooltip` component
 - Added `PrimaryTooltip` resource
+- Added `Tooltip` component
 - Added `bevy_reflect` feature
