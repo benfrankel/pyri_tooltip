@@ -19,10 +19,10 @@ use bevy_ecs::{
     event::{Event, EventReader, EventWriter},
     query::With,
     schedule::{common_conditions::on_event, IntoSystemConfigs as _},
-    system::{Query, Res, ResMut, Resource},
+    system::{Commands, Query, Res, ResMut, Resource},
     world::World,
 };
-use bevy_hierarchy::BuildWorldChildren as _;
+use bevy_hierarchy::{BuildWorldChildren as _, Parent};
 use bevy_math::Vec2;
 use bevy_render::{
     camera::{Camera, RenderTarget},
@@ -37,7 +37,8 @@ use bevy_transform::{
 };
 use bevy_ui::{
     node_bundles::{NodeBundle, TextBundle},
-    Interaction, Node, PositionType, Style, UiRect, UiStack, UiSystem, Val, ZIndex,
+    Interaction, IsDefaultUiCamera, Node, PositionType, Style, TargetCamera, UiRect, UiStack,
+    UiSystem, Val, ZIndex,
 };
 use bevy_window::{PrimaryWindow, Window, WindowRef};
 use tiny_bail::prelude::*;
@@ -45,8 +46,10 @@ use tiny_bail::prelude::*;
 /// TODO
 #[derive(Default)]
 pub struct TooltipPlugin {
+    // TODO: Write about the components expected to exist on this entity (or insert them myself).
     /// Set a custom entity for [`PrimaryTooltip::container`], or spawn a default entity if `None`.
     pub container: Option<Entity>,
+    // TODO: Write about the components expected to exist on this entity (or insert them myself).
     /// Set a custom entity for [`PrimaryTooltip::text`], or spawn a default entity if `None`.
     pub text: Option<Entity>,
 }
@@ -75,7 +78,6 @@ impl Plugin for TooltipPlugin {
         app.add_systems(
             PostUpdate,
             place_tooltip
-                .run_if(on_event::<ShowTooltip>())
                 .after(UiSystem::Layout)
                 .before(TransformSystem::TransformPropagate),
         );
@@ -108,7 +110,7 @@ impl PrimaryTooltip {
                             padding: UiRect::all(Val::Px(8.0)),
                             ..Default::default()
                         },
-                        background_color: Color::srgba(0.5, 0.5, 0.5, 0.9).into(),
+                        background_color: Color::srgba(0.2, 0.2, 0.3, 0.95).into(),
                         visibility: Visibility::Hidden,
                         z_index: ZIndex::Global(999),
                         ..Default::default()
@@ -151,9 +153,9 @@ impl Tooltip {
     /// Use the given tooltip entity and default behavior.
     fn new(entity: TooltipEntity) -> Self {
         Self {
-            activation: Default::default(),
-            transfer: Default::default(),
-            placement: Default::default(),
+            activation: TooltipActivation::IDLE,
+            transfer: TooltipTransfer::NONE,
+            placement: TooltipPlacement::CURSOR,
             entity,
         }
     }
@@ -206,21 +208,64 @@ pub struct TooltipActivation {
     /// Whether to reset the activation delay timer whenever the cursor moves.
     pub reset_delay_on_cursor_move: bool,
     /// The radius around the activation point beyond which the tooltip will be dismissed.
-    pub radius: f32,
+    pub dismiss_radius: f32,
+    // TODO: pub dismiss_on_click: bool,
 }
 
 impl TooltipActivation {
-    /// The default `TooltipActivation`.
-    pub const DEFAULT: Self = Self {
-        delay: 100,
+    /// Show tooltip immediately on hover.
+    pub const IMMEDIATE: Self = Self {
+        delay: 0,
         reset_delay_on_cursor_move: false,
-        radius: f32::INFINITY,
+        dismiss_radius: f32::INFINITY,
+    };
+
+    /// Show tooltip after a short while.
+    pub const SHORT_DELAY: Self = Self {
+        delay: 200,
+        reset_delay_on_cursor_move: false,
+        dismiss_radius: f32::INFINITY,
+    };
+
+    /// Show tooltip after a while.
+    pub const DELAY: Self = Self {
+        delay: 400,
+        reset_delay_on_cursor_move: false,
+        dismiss_radius: f32::INFINITY,
+    };
+
+    /// Show tooltip after a long while.
+    pub const LONG_DELAY: Self = Self {
+        delay: 600,
+        reset_delay_on_cursor_move: false,
+        dismiss_radius: f32::INFINITY,
+    };
+
+    /// Show tooltip after the cursor stays idle for a short while.
+    pub const SHORT_IDLE: Self = Self {
+        delay: 200,
+        reset_delay_on_cursor_move: true,
+        dismiss_radius: f32::INFINITY,
+    };
+
+    /// Show tooltip after the cursor stays idle for a while.
+    pub const IDLE: Self = Self {
+        delay: 400,
+        reset_delay_on_cursor_move: true,
+        dismiss_radius: f32::INFINITY,
+    };
+
+    /// Show tooltip after the cursor stays idle for a long while.
+    pub const LONG_IDLE: Self = Self {
+        delay: 600,
+        reset_delay_on_cursor_move: true,
+        dismiss_radius: f32::INFINITY,
     };
 }
 
 impl Default for TooltipActivation {
     fn default() -> Self {
-        Self::DEFAULT
+        Self::IMMEDIATE
     }
 }
 
@@ -239,18 +284,26 @@ pub struct TooltipTransfer {
 }
 
 impl TooltipTransfer {
-    /// The default `TooltipTransfer`.
-    pub const DEFAULT: Self = Self {
+    /// No tooltip transfer.
+    pub const NONE: Self = Self {
         group: None,
         layer: 0,
         timeout: 0,
+        from_active: true,
+    };
+
+    /// Short-duration tooltip transfer.
+    pub const SHORT: Self = Self {
+        group: Some(0),
+        layer: 0,
+        timeout: 100,
         from_active: true,
     };
 }
 
 impl Default for TooltipTransfer {
     fn default() -> Self {
-        Self::DEFAULT
+        Self::NONE
     }
 }
 
@@ -271,19 +324,64 @@ pub struct TooltipPlacement {
 }
 
 impl TooltipPlacement {
-    /// The default `TooltipPlacement`.
-    pub const DEFAULT: Self = Self {
+    /// Show tooltip centered at cursor.
+    pub const CURSOR_CENTERED: Self = Self {
+        tooltip_anchor: Anchor::Center,
+        target_anchor: None,
+        offset_x: Val::ZERO,
+        offset_y: Val::ZERO,
+        clamp_padding: UiRect::ZERO,
+    };
+
+    /// Show tooltip at cursor.
+    pub const CURSOR: Self = Self {
         tooltip_anchor: Anchor::TopLeft,
         target_anchor: None,
         offset_x: Val::Px(16.0),
         offset_y: Val::Px(16.0),
-        clamp_padding: UiRect::all(Val::ZERO),
+        clamp_padding: UiRect::ZERO,
+    };
+
+    /// Show tooltip to the left of target.
+    pub const LEFT: Self = Self {
+        tooltip_anchor: Anchor::CenterRight,
+        target_anchor: Some(Anchor::CenterLeft),
+        offset_x: Val::ZERO,
+        offset_y: Val::ZERO,
+        clamp_padding: UiRect::ZERO,
+    };
+
+    /// Show tooltip to the right of target.
+    pub const RIGHT: Self = Self {
+        tooltip_anchor: Anchor::CenterLeft,
+        target_anchor: Some(Anchor::CenterRight),
+        offset_x: Val::ZERO,
+        offset_y: Val::ZERO,
+        clamp_padding: UiRect::ZERO,
+    };
+
+    /// Show tooltip above target.
+    pub const TOP: Self = Self {
+        tooltip_anchor: Anchor::BottomCenter,
+        target_anchor: Some(Anchor::TopCenter),
+        offset_x: Val::ZERO,
+        offset_y: Val::ZERO,
+        clamp_padding: UiRect::ZERO,
+    };
+
+    /// Show tooltip below target.
+    pub const BOTTOM: Self = Self {
+        tooltip_anchor: Anchor::TopCenter,
+        target_anchor: Some(Anchor::BottomCenter),
+        offset_x: Val::ZERO,
+        offset_y: Val::ZERO,
+        clamp_padding: UiRect::ZERO,
     };
 }
 
 impl Default for TooltipPlacement {
     fn default() -> Self {
-        Self::DEFAULT
+        Self::CURSOR_CENTERED
     }
 }
 
@@ -328,8 +426,8 @@ impl Default for TooltipContext {
             target: Entity::PLACEHOLDER,
             timer: 0,
             cursor_pos: Vec2::ZERO,
-            activation: TooltipActivation::DEFAULT,
-            transfer: TooltipTransfer::DEFAULT,
+            activation: TooltipActivation::IMMEDIATE,
+            transfer: TooltipTransfer::NONE,
             entity: TooltipEntity::Custom(Entity::PLACEHOLDER),
         }
     }
@@ -377,7 +475,7 @@ fn update_tooltip_context(
 
         // Dismiss tooltip if cursor has left the activation radius.
         if matches!(ctx.state, TooltipState::Active)
-            && ctx.cursor_pos.distance_squared(cursor_pos) > ctx.activation.radius
+            && ctx.cursor_pos.distance_squared(cursor_pos) > ctx.activation.dismiss_radius
         {
             ctx.state = TooltipState::Dismissed;
         }
@@ -433,7 +531,7 @@ fn update_tooltip_context(
         };
         ctx.timer = tooltip.activation.delay;
         ctx.activation = tooltip.activation;
-        ctx.activation.radius *= ctx.activation.radius;
+        ctx.activation.dismiss_radius *= ctx.activation.dismiss_radius;
         ctx.transfer = tooltip.transfer;
         ctx.entity = tooltip.entity.clone();
         found_target = true;
@@ -511,11 +609,16 @@ fn show_tooltip(
     *r!(visibility_query.get_mut(entity)) = Visibility::Visible;
 }
 
+// TODO: Only run on `ShowTooltip` event OR if using target anchor + target has moved or resized.
 fn place_tooltip(
+    mut commands: Commands,
     ctx: Res<TooltipContext>,
-    window_query: Query<&Window>,
-    target_query: Query<(&Tooltip, &GlobalTransform, &Node)>,
     primary: Res<PrimaryTooltip>,
+    camera_query: Query<(Entity, &Camera)>,
+    target_camera_query: Query<&TargetCamera>,
+    parent_query: Query<&Parent>,
+    default_camera_query: Query<(Entity, &Camera), With<IsDefaultUiCamera>>,
+    target_query: Query<(&Tooltip, &GlobalTransform, &Node)>,
     mut tooltip_query: Query<(&mut Style, &mut Transform, &GlobalTransform, &Node)>,
 ) {
     rq!(matches!(ctx.state, TooltipState::Active));
@@ -525,6 +628,25 @@ fn place_tooltip(
         &TooltipEntity::Custom(id) => id,
     };
     let (mut style, mut transform, gt, node) = r!(tooltip_query.get_mut(entity));
+
+    // Identify the target camera and viewport rect.
+    let (camera_entity, camera) = if let Ok(camera) = camera_query.get_single() {
+        camera
+    } else {
+        let mut target = ctx.target;
+        loop {
+            if let Ok(target_camera) = target_camera_query.get(target) {
+                break r!(camera_query.get(target_camera.0));
+            } else if let Ok(parent) = parent_query.get(target) {
+                target = parent.get();
+            } else {
+                break r!(default_camera_query.get_single());
+            }
+        }
+    };
+    let viewport = r!(camera.logical_viewport_rect());
+    // Insert instead of mutate because the tooltip entity might not spawn with a `TargetCamera` component.
+    commands.entity(entity).insert(TargetCamera(camera_entity));
 
     // Calculate target position.
     let mut pos = if let Some(target_anchor) = tooltip.placement.target_anchor {
@@ -540,58 +662,51 @@ fn place_tooltip(
         tooltip_rect.size() * tooltip.placement.tooltip_anchor.as_vec() * Vec2::new(-1.0, 1.0);
     pos += tooltip_anchor;
 
-    // Apply offset and clamping to target position.
-    for window in &window_query {
-        cq!(window.focused);
+    // Resolve offset `Val`s.
+    let size = viewport.size();
+    let offset_x = tooltip
+        .placement
+        .offset_x
+        .resolve(size.x, size)
+        .unwrap_or_default();
+    let offset_y = tooltip
+        .placement
+        .offset_y
+        .resolve(size.y, size)
+        .unwrap_or_default();
 
-        // Resolve offset `Val`s.
-        let size = window.resolution.size();
-        let offset_x = tooltip
-            .placement
-            .offset_x
-            .resolve(size.x, size)
-            .unwrap_or_default();
-        let offset_y = tooltip
-            .placement
-            .offset_y
-            .resolve(size.y, size)
-            .unwrap_or_default();
+    // Apply offset.
+    pos += Vec2::new(offset_x, offset_y);
 
-        // Apply offset.
-        pos += Vec2::new(offset_x, offset_y);
+    // Resolve clamp padding `Val`s.
+    let UiRect {
+        left,
+        right,
+        top,
+        bottom,
+    } = tooltip.placement.clamp_padding;
+    let left = left.resolve(size.x, size).unwrap_or_default();
+    let right = right.resolve(size.x, size).unwrap_or_default();
+    let top = top.resolve(size.x, size).unwrap_or_default();
+    let bottom = bottom.resolve(size.x, size).unwrap_or_default();
 
-        // Resolve clamp padding `Val`s.
-        let UiRect {
-            left,
-            right,
-            top,
-            bottom,
-        } = tooltip.placement.clamp_padding;
-        let left = left.resolve(size.x, size).unwrap_or_default();
-        let right = right.resolve(size.x, size).unwrap_or_default();
-        let top = top.resolve(size.x, size).unwrap_or_default();
-        let bottom = bottom.resolve(size.x, size).unwrap_or_default();
-
-        // Apply clamping.
-        let half_size = tooltip_rect.half_size();
-        let mut left = half_size.x + left;
-        let mut right = size.x - half_size.x - right;
-        if left > right {
-            let mid = (left + right) / 2.0;
-            left = mid;
-            right = mid;
-        }
-        let mut top = half_size.y + top;
-        let mut bottom = size.y - half_size.y - bottom;
-        if top > bottom {
-            let mid = (top + bottom) / 2.0;
-            top = mid;
-            bottom = mid;
-        }
-        pos = pos.clamp(Vec2::new(left, top), Vec2::new(right, bottom));
-
-        break;
+    // Apply clamping.
+    let half_size = tooltip_rect.half_size();
+    let mut left = half_size.x + left;
+    let mut right = size.x - half_size.x - right;
+    if left > right {
+        let mid = (left + right) / 2.0;
+        left = mid;
+        right = mid;
     }
+    let mut top = half_size.y + top;
+    let mut bottom = size.y - half_size.y - bottom;
+    if top > bottom {
+        let mid = (top + bottom) / 2.0;
+        top = mid;
+        bottom = mid;
+    }
+    pos = pos.clamp(Vec2::new(left, top), Vec2::new(right, bottom));
 
     // Set position via `Style`.
     let top_left = pos - tooltip_rect.half_size();
