@@ -1,5 +1,3 @@
-//! TODO
-
 use bevy_app::{App, PostUpdate};
 use bevy_ecs::{
     entity::Entity,
@@ -32,7 +30,9 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
-/// TODO
+/// The tooltip placement configuration.
+///
+/// Defaults to [`Self::CURSOR_CENTERED`].
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub struct TooltipPlacement {

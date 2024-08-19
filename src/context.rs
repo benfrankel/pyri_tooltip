@@ -1,5 +1,3 @@
-//! TODO
-
 use bevy_app::{App, PreUpdate};
 #[cfg(feature = "bevy_reflect")]
 use bevy_ecs::reflect::ReflectResource;
@@ -39,7 +37,7 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
-/// TODO
+/// A [`Resource`] that contains the current values in use by the tooltip system.
 #[derive(Resource, Clone, Debug)]
 #[cfg_attr(
     feature = "bevy_reflect",
@@ -203,7 +201,7 @@ fn update_tooltip_context(
     }
 }
 
-/// TODO
+/// The current state of the tooltip system.
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub(crate) enum TooltipState {

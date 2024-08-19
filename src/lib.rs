@@ -1,9 +1,39 @@
-//! TODO
+//! Featureful tooltips for Bevy.
+//!
+//! # Getting started
+//!
+//! Import the [prelude] to bring common types into scope:
+//!
+//! ```
+//! use pyri_tooltip::prelude::*;
+//! ```
+//!
+//! Add [`TooltipPlugin`] to set up the tooltip system:
+//!
+//! ```ignore
+//! app.add_plugins(TooltipPlugin::default());
+//! ```
+//!
+//! Spawn a UI node with a [`Tooltip`]:
+//!
+//! ```ignore
+//! commands.spawn((
+//!     NodeBundle::default(),
+//!     Interaction::default(),
+//!     Tooltip::from_section("Hello, world!", TextStyle::default()),
+//! ));
+//! ```
 
 mod context;
 mod placement;
 
-/// TODO
+/// Re-exports for commonly used types.
+///
+/// # Usage
+///
+/// ```
+/// use pyri_tooltip::prelude::*;
+/// ```
 pub mod prelude {
     pub use super::{
         PrimaryTooltip, Tooltip, TooltipActivation, TooltipEntity, TooltipPlacement, TooltipPlugin,
@@ -27,14 +57,19 @@ use bevy_ui::{
 
 pub use placement::TooltipPlacement;
 
-/// TODO
+/// A [`Plugin`] that sets up the tooltip widget system.
 #[derive(Default)]
 pub struct TooltipPlugin {
-    // TODO: Write about the components expected to exist on this entity (or insert them myself).
-    /// Set a custom entity for [`PrimaryTooltip::container`], or spawn a default entity if `None`.
+    /// Set a custom entity for [`PrimaryTooltip::container`], or spawn the default container
+    /// entity if `None`.
+    ///
+    /// This entity should include all of the components of [`NodeBundle`], with
+    /// [`Visibility::Hidden`] and [`Style::position_type`] set to [`PositionType::Absolute`].
     pub container: Option<Entity>,
-    // TODO: Write about the components expected to exist on this entity (or insert them myself).
-    /// Set a custom entity for [`PrimaryTooltip::text`], or spawn a default entity if `None`.
+    /// Set a custom entity for [`PrimaryTooltip::text`], or spawn the default text entity if
+    /// `None`.
+    ///
+    /// This entity should include all of the components of [`TextBundle`].
     pub text: Option<Entity>,
 }
 
@@ -50,7 +85,9 @@ impl Plugin for TooltipPlugin {
     }
 }
 
-/// TODO
+/// A [`Resource`] containing the [`Entity`] IDs of the global primary tooltip.
+///
+/// See [`TooltipPlugin`] to set up a custom primary tooltip.
 #[derive(Resource, Copy, Clone, Debug)]
 #[cfg_attr(
     feature = "bevy_reflect",
@@ -97,7 +134,16 @@ impl PrimaryTooltip {
 }
 
 // TODO: Animation, wedge (like a speech bubble), easier content customization / icons.
-/// TODO
+/// A [`Component`] that specifies a tooltip to be displayed on hover.
+///
+/// This will only work on entities that also include the following components:
+/// - [`NodeBundle`] components
+/// - [`Interaction`](bevy_ui::Interaction)
+///
+/// The default behavior consists of the following values:
+/// - [`TooltipActivation::IDLE`]
+/// - [`TooltipTransfer::NONE`]
+/// - [`TooltipPlacement::CURSOR`]
 #[derive(Component)]
 #[cfg_attr(
     feature = "bevy_reflect",
@@ -116,7 +162,7 @@ pub struct Tooltip {
 }
 
 impl Tooltip {
-    /// Use the given tooltip entity and default behavior.
+    /// Use the provided tooltip entity and default behavior.
     fn new(entity: TooltipEntity) -> Self {
         Self {
             activation: TooltipActivation::IDLE,
@@ -165,7 +211,9 @@ impl Tooltip {
     }
 }
 
-/// TODO
+/// The tooltip activation and dismissal conditions.
+///
+/// Defaults to [`Self::IMMEDIATE`].
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub struct TooltipActivation {
@@ -235,13 +283,17 @@ impl Default for TooltipActivation {
     }
 }
 
-/// TODO
+/// The tooltip transfer conditions.
+///
+/// When a transfer occurs, the next tooltip's activation delay will be skipped.
+///
+/// Defaults to [`Self::NONE`].
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub struct TooltipTransfer {
-    /// Only transfer to elements in the same group, or to self if `None`.
+    /// Only transfer to elements within the same group, or to self if `None`.
     pub group: Option<i8>,
-    /// Only transfer to elements in the same layer or lower.
+    /// Only transfer to elements within the same layer or lower.
     pub layer: i8,
     /// Only transfer within this duration after the cursor moves away from the old target (in milliseconds).
     pub timeout: u16,
@@ -273,7 +325,7 @@ impl Default for TooltipTransfer {
     }
 }
 
-/// TODO
+/// The tooltip entity and content to be displayed.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub enum TooltipEntity {
