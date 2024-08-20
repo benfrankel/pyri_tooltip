@@ -65,7 +65,7 @@ impl Default for TooltipContext {
             target: Entity::PLACEHOLDER,
             timer: 0,
             cursor_pos: Vec2::ZERO,
-            tooltip: Tooltip::new(Entity::PLACEHOLDER),
+            tooltip: Tooltip::cursor(Entity::PLACEHOLDER),
         }
     }
 }

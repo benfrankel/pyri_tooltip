@@ -62,6 +62,7 @@ use bevy_ecs::{
 };
 use bevy_hierarchy::BuildWorldChildren as _;
 use bevy_render::view::Visibility;
+use bevy_sprite::Anchor;
 use bevy_text::{JustifyText, Text, TextSection, TextStyle};
 use bevy_transform::TransformSystem;
 use bevy_ui::{
@@ -200,8 +201,18 @@ pub struct Tooltip {
 }
 
 impl Tooltip {
-    /// Construct a new `Tooltip` with default behavior.
-    pub fn new(content: impl Into<TooltipContent>) -> Self {
+    /// Create a new fixed `Tooltip`.
+    pub fn fixed(placement: Anchor, content: impl Into<TooltipContent>) -> Self {
+        Self {
+            activation: TooltipActivation::IMMEDIATE,
+            transfer: TooltipTransfer::SHORT,
+            placement: placement.into(),
+            content: content.into(),
+        }
+    }
+
+    /// Create a new cursor `Tooltip`.
+    pub fn cursor(content: impl Into<TooltipContent>) -> Self {
         Self {
             activation: TooltipActivation::IDLE,
             transfer: TooltipTransfer::NONE,
@@ -210,25 +221,10 @@ impl Tooltip {
         }
     }
 
-    /// Construct a new `Tooltip` from a single [`TextSection`] and default behavior.
-    pub fn from_section(value: impl Into<String>, style: TextStyle) -> Self {
-        Self::new(TooltipContent::Primary(Text::from_section(value, style)))
-    }
-
-    /// Construct a new `Tooltip` from a list of [`TextSection`]s and default behavior.
-    pub fn from_sections(sections: impl IntoIterator<Item = TextSection>) -> Self {
-        Self::new(TooltipContent::Primary(Text::from_sections(sections)))
-    }
-
-    /// Construct a new `Tooltip` from a given [`Text`] and default behavior.
-    pub fn from_text(text: impl Into<Text>) -> Self {
-        Self::new(TooltipContent::Primary(text.into()))
-    }
-
     /// Set [`JustifyText`].
     ///
     /// NOTE: This does nothing for custom tooltips.
-    pub fn with_justify_text(mut self, justify_text: JustifyText) -> Self {
+    pub fn with_justify(mut self, justify_text: JustifyText) -> Self {
         // TODO: Warn otherwise?
         if let TooltipContent::Primary(text) = &mut self.content {
             text.justify = justify_text;
@@ -415,6 +411,12 @@ impl From<String> for TooltipContent {
 impl From<TextSection> for TooltipContent {
     fn from(value: TextSection) -> Self {
         Self::Primary(Text::from_section(value.value, value.style))
+    }
+}
+
+impl From<Vec<TextSection>> for TooltipContent {
+    fn from(value: Vec<TextSection>) -> Self {
+        Self::Primary(Text::from_sections(value))
     }
 }
 
