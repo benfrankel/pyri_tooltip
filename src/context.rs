@@ -113,7 +113,7 @@ fn update_tooltip_context(
 
         // Dismiss tooltip if cursor has left the activation radius.
         if matches!(ctx.state, TooltipState::Active)
-            && ctx.cursor_pos.distance_squared(cursor_pos) > ctx.tooltip.activation.dismiss_radius
+            && ctx.cursor_pos.distance_squared(cursor_pos) > ctx.tooltip.dismissal.on_distance
         {
             ctx.state = TooltipState::Dismissed;
         }
@@ -139,15 +139,15 @@ fn update_tooltip_context(
     for &entity in ui_stack.uinodes.iter().rev() {
         let (tooltip, interaction) = cq!(interaction_query.get(entity));
         match interaction {
-            Interaction::Pressed => {
+            Interaction::Pressed if tooltip.dismissal.on_click => {
                 ctx.target = entity;
                 ctx.state = TooltipState::Dismissed;
                 ctx.tooltip.transfer = tooltip.transfer;
                 found_target = true;
                 break;
             }
-            Interaction::Hovered => (),
             Interaction::None => continue,
+            _ => (),
         };
         if !(matches!(ctx.state, TooltipState::Inactive) || ctx.target != entity) {
             found_target = true;
@@ -169,7 +169,7 @@ fn update_tooltip_context(
         };
         ctx.timer = tooltip.activation.delay;
         ctx.tooltip = tooltip.clone();
-        ctx.tooltip.activation.dismiss_radius *= ctx.tooltip.activation.dismiss_radius;
+        ctx.tooltip.dismissal.on_distance *= ctx.tooltip.dismissal.on_distance;
         found_target = true;
         break;
     }

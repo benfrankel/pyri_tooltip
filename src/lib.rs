@@ -190,13 +190,15 @@ impl PrimaryTooltip {
     reflect(Component)
 )]
 pub struct Tooltip {
-    /// The conditions for activating and dismissing the tooltip.
+    /// The conditions for activating the tooltip.
     pub activation: TooltipActivation,
+    /// The conditions for dismissing the tooltip.
+    pub dismissal: TooltipDismissal,
     /// The conditions for skipping the next tooltip's activation delay.
     pub transfer: TooltipTransfer,
     /// How the position of the tooltip entity should be determined.
     pub placement: TooltipPlacement,
-    /// The entity to display as the tooltip.
+    /// The tooltip entity and content to be displayed.
     pub content: TooltipContent,
 }
 
@@ -205,6 +207,7 @@ impl Tooltip {
     pub fn fixed(placement: Anchor, content: impl Into<TooltipContent>) -> Self {
         Self {
             activation: TooltipActivation::IMMEDIATE,
+            dismissal: TooltipDismissal::NONE,
             transfer: TooltipTransfer::SHORT,
             placement: placement.into(),
             content: content.into(),
@@ -215,6 +218,7 @@ impl Tooltip {
     pub fn cursor(content: impl Into<TooltipContent>) -> Self {
         Self {
             activation: TooltipActivation::IDLE,
+            dismissal: TooltipDismissal::ON_CLICK,
             transfer: TooltipTransfer::NONE,
             placement: TooltipPlacement::CURSOR,
             content: content.into(),
@@ -238,6 +242,12 @@ impl Tooltip {
         self
     }
 
+    /// Set [`TooltipDismissal`].
+    pub fn with_dismissal(mut self, dismissal: impl Into<TooltipDismissal>) -> Self {
+        self.dismissal = dismissal.into();
+        self
+    }
+
     /// Set [`TooltipTransfer`].
     pub fn with_transfer(mut self, transfer: impl Into<TooltipTransfer>) -> Self {
         self.transfer = transfer.into();
@@ -251,7 +261,7 @@ impl Tooltip {
     }
 }
 
-/// The tooltip activation and dismissal conditions.
+/// Tooltip activation conditions.
 ///
 /// Defaults to [`Self::IMMEDIATE`].
 #[derive(Copy, Clone, Debug)]
@@ -261,9 +271,6 @@ pub struct TooltipActivation {
     pub delay: u16,
     /// Whether to reset the activation delay timer whenever the cursor moves.
     pub reset_delay_on_cursor_move: bool,
-    /// The radius around the activation point beyond which the tooltip will be dismissed.
-    pub dismiss_radius: f32,
-    // TODO: pub dismiss_on_click: bool,
 }
 
 impl TooltipActivation {
@@ -271,49 +278,42 @@ impl TooltipActivation {
     pub const IMMEDIATE: Self = Self {
         delay: 0,
         reset_delay_on_cursor_move: false,
-        dismiss_radius: f32::INFINITY,
     };
 
     /// Show tooltip after a short while.
     pub const SHORT_DELAY: Self = Self {
         delay: 200,
         reset_delay_on_cursor_move: false,
-        dismiss_radius: f32::INFINITY,
     };
 
     /// Show tooltip after a while.
     pub const DELAY: Self = Self {
         delay: 400,
         reset_delay_on_cursor_move: false,
-        dismiss_radius: f32::INFINITY,
     };
 
     /// Show tooltip after a long while.
     pub const LONG_DELAY: Self = Self {
         delay: 600,
         reset_delay_on_cursor_move: false,
-        dismiss_radius: f32::INFINITY,
     };
 
     /// Show tooltip after the cursor stays idle for a short while.
     pub const SHORT_IDLE: Self = Self {
         delay: 200,
         reset_delay_on_cursor_move: true,
-        dismiss_radius: f32::INFINITY,
     };
 
     /// Show tooltip after the cursor stays idle for a while.
     pub const IDLE: Self = Self {
         delay: 400,
         reset_delay_on_cursor_move: true,
-        dismiss_radius: f32::INFINITY,
     };
 
     /// Show tooltip after the cursor stays idle for a long while.
     pub const LONG_IDLE: Self = Self {
         delay: 600,
         reset_delay_on_cursor_move: true,
-        dismiss_radius: f32::INFINITY,
     };
 }
 
@@ -322,7 +322,6 @@ impl From<u16> for TooltipActivation {
         Self {
             delay: value,
             reset_delay_on_cursor_move: false,
-            dismiss_radius: f32::INFINITY,
         }
     }
 }
@@ -330,6 +329,38 @@ impl From<u16> for TooltipActivation {
 impl Default for TooltipActivation {
     fn default() -> Self {
         Self::IMMEDIATE
+    }
+}
+
+/// Tooltip dismissal conditions.
+///
+/// Defaults to [`Self::NONE`].
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
+pub struct TooltipDismissal {
+    /// The distance from the activation point beyond which the tooltip will be dismissed.
+    pub on_distance: f32,
+    /// Whether the tooltip should be dismissed on click.
+    pub on_click: bool,
+}
+
+impl TooltipDismissal {
+    /// No tooltip dismissal.
+    pub const NONE: Self = Self {
+        on_distance: f32::INFINITY,
+        on_click: false,
+    };
+
+    /// Dismiss tooltip on click.
+    pub const ON_CLICK: Self = Self {
+        on_distance: f32::INFINITY,
+        on_click: true,
+    };
+}
+
+impl Default for TooltipDismissal {
+    fn default() -> Self {
+        Self::NONE
     }
 }
 
