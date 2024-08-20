@@ -29,7 +29,7 @@
 //! To customize tooltip behavior, see [`Tooltip`].
 //!
 //! To set a custom primary tooltip, see [`TooltipPlugin`] and [`PrimaryTooltip`].
-//! For fully custom per-entity tooltips, use [`TooltipEntity::Custom`].
+//! For fully custom per-entity tooltips, use [`TooltipContent::Custom`].
 
 mod context;
 mod placement;
@@ -43,8 +43,8 @@ mod placement;
 /// ```
 pub mod prelude {
     pub use super::{
-        PrimaryTooltip, Tooltip, TooltipActivation, TooltipEntity, TooltipPlacement, TooltipPlugin,
-        TooltipSet, TooltipTransfer,
+        PrimaryTooltip, Tooltip, TooltipActivation, TooltipContent, TooltipPlacement,
+        TooltipPlugin, TooltipSet, TooltipTransfer,
     };
 }
 
@@ -196,67 +196,61 @@ pub struct Tooltip {
     /// How the position of the tooltip entity should be determined.
     pub placement: TooltipPlacement,
     /// The entity to display as the tooltip.
-    pub entity: TooltipEntity,
+    pub content: TooltipContent,
 }
 
 impl Tooltip {
-    /// Use the provided tooltip entity and default behavior.
-    fn new(entity: TooltipEntity) -> Self {
+    /// Construct a new `Tooltip` with default behavior.
+    pub fn new(content: impl Into<TooltipContent>) -> Self {
         Self {
             activation: TooltipActivation::IDLE,
             transfer: TooltipTransfer::NONE,
             placement: TooltipPlacement::CURSOR,
-            entity,
+            content: content.into(),
         }
     }
 
-    /// Use a custom tooltip entity and default behavior.
-    pub fn custom(entity: Entity) -> Self {
-        Self::new(TooltipEntity::Custom(entity))
-    }
-
-    /// Use the primary tooltip entity with a single [`TextSection`] and default behavior.
+    /// Construct a new `Tooltip` from a single [`TextSection`] and default behavior.
     pub fn from_section(value: impl Into<String>, style: TextStyle) -> Self {
-        Self::new(TooltipEntity::Primary(Text::from_section(value, style)))
+        Self::new(TooltipContent::Primary(Text::from_section(value, style)))
     }
 
-    /// Use the primary tooltip entity with a list of [`TextSection`]s and default behavior.
+    /// Construct a new `Tooltip` from a list of [`TextSection`]s and default behavior.
     pub fn from_sections(sections: impl IntoIterator<Item = TextSection>) -> Self {
-        Self::new(TooltipEntity::Primary(Text::from_sections(sections)))
+        Self::new(TooltipContent::Primary(Text::from_sections(sections)))
     }
 
-    /// Use the primary tooltip entity with a given [`Text`] and default behavior.
+    /// Construct a new `Tooltip` from a given [`Text`] and default behavior.
     pub fn from_text(text: impl Into<Text>) -> Self {
-        Self::new(TooltipEntity::Primary(text.into()))
+        Self::new(TooltipContent::Primary(text.into()))
     }
 
-    /// Set the [`JustifyText`].
+    /// Set [`JustifyText`].
     ///
-    /// NOTE: This does nothing with a custom tooltip.
+    /// NOTE: This does nothing for custom tooltips.
     pub fn with_justify_text(mut self, justify_text: JustifyText) -> Self {
-        match &mut self.entity {
-            TooltipEntity::Primary(text) => text.justify = justify_text,
-            // TODO: Warn?
-            _ => (),
+        // TODO: Warn otherwise?
+        if let TooltipContent::Primary(text) = &mut self.content {
+            text.justify = justify_text;
         }
         self
     }
 
-    /// Set a custom [`TooltipActivation`].
-    pub fn with_activation(mut self, activation: TooltipActivation) -> Self {
-        self.activation = activation;
+    /// Set [`TooltipActivation`].
+    pub fn with_activation(mut self, activation: impl Into<TooltipActivation>) -> Self {
+        self.activation = activation.into();
         self
     }
 
-    /// Set a custom [`TooltipTransfer`].
-    pub fn with_transfer(mut self, transfer: TooltipTransfer) -> Self {
-        self.transfer = transfer;
+    /// Set [`TooltipTransfer`].
+    pub fn with_transfer(mut self, transfer: impl Into<TooltipTransfer>) -> Self {
+        self.transfer = transfer.into();
         self
     }
 
-    /// Set a custom [`TooltipPlacement`].
-    pub fn with_placement(mut self, placement: TooltipPlacement) -> Self {
-        self.placement = placement;
+    /// Set [`TooltipPlacement`].
+    pub fn with_placement(mut self, placement: impl Into<TooltipPlacement>) -> Self {
+        self.placement = placement.into();
         self
     }
 }
@@ -327,6 +321,16 @@ impl TooltipActivation {
     };
 }
 
+impl From<u16> for TooltipActivation {
+    fn from(value: u16) -> Self {
+        Self {
+            delay: value,
+            reset_delay_on_cursor_move: false,
+            dismiss_radius: f32::INFINITY,
+        }
+    }
+}
+
 impl Default for TooltipActivation {
     fn default() -> Self {
         Self::IMMEDIATE
@@ -369,6 +373,17 @@ impl TooltipTransfer {
     };
 }
 
+impl From<u16> for TooltipTransfer {
+    fn from(value: u16) -> Self {
+        Self {
+            group: Some(0),
+            layer: 0,
+            timeout: value,
+            from_active: true,
+        }
+    }
+}
+
 impl Default for TooltipTransfer {
     fn default() -> Self {
         Self::NONE
@@ -378,11 +393,41 @@ impl Default for TooltipTransfer {
 /// The tooltip entity and content to be displayed.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
-pub enum TooltipEntity {
+pub enum TooltipContent {
     /// Use the primary tooltip entity with custom [`Text`].
     Primary(Text),
     /// Use a fully custom entity as the tooltip.
     Custom(Entity),
+}
+
+impl From<&str> for TooltipContent {
+    fn from(value: &str) -> Self {
+        Self::Primary(Text::from_section(value.to_string(), TextStyle::default()))
+    }
+}
+
+impl From<String> for TooltipContent {
+    fn from(value: String) -> Self {
+        Self::Primary(Text::from_section(value, TextStyle::default()))
+    }
+}
+
+impl From<TextSection> for TooltipContent {
+    fn from(value: TextSection) -> Self {
+        Self::Primary(Text::from_section(value.value, value.style))
+    }
+}
+
+impl From<Text> for TooltipContent {
+    fn from(value: Text) -> Self {
+        Self::Primary(value)
+    }
+}
+
+impl From<Entity> for TooltipContent {
+    fn from(value: Entity) -> Self {
+        Self::Custom(value)
+    }
 }
 
 /// A [`SystemSet`] for tooltip systems.

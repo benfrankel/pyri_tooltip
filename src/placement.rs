@@ -15,7 +15,7 @@ use tiny_bail::prelude::*;
 
 use crate::{
     context::{TooltipContext, TooltipState},
-    PrimaryTooltip, TooltipEntity, TooltipSet,
+    PrimaryTooltip, TooltipContent, TooltipSet,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -58,42 +58,40 @@ impl TooltipPlacement {
         offset_y: Val::Px(16.0),
         clamp_padding: UiRect::ZERO,
     };
+}
 
-    /// Show tooltip to the left of target.
-    pub const LEFT: Self = Self {
-        tooltip_anchor: Anchor::CenterRight,
-        target_anchor: Some(Anchor::CenterLeft),
-        offset_x: Val::ZERO,
-        offset_y: Val::ZERO,
-        clamp_padding: UiRect::ZERO,
-    };
+impl From<Anchor> for TooltipPlacement {
+    fn from(value: Anchor) -> Self {
+        Self {
+            tooltip_anchor: match value {
+                Anchor::Center | Anchor::Custom(_) => Anchor::Center,
+                Anchor::BottomLeft => Anchor::TopRight,
+                Anchor::BottomCenter => Anchor::TopCenter,
+                Anchor::BottomRight => Anchor::TopLeft,
+                Anchor::CenterLeft => Anchor::CenterRight,
+                Anchor::CenterRight => Anchor::CenterLeft,
+                Anchor::TopLeft => Anchor::BottomRight,
+                Anchor::TopCenter => Anchor::BottomCenter,
+                Anchor::TopRight => Anchor::BottomLeft,
+            },
+            target_anchor: Some(value),
+            offset_x: Val::ZERO,
+            offset_y: Val::ZERO,
+            clamp_padding: UiRect::ZERO,
+        }
+    }
+}
 
-    /// Show tooltip to the right of target.
-    pub const RIGHT: Self = Self {
-        tooltip_anchor: Anchor::CenterLeft,
-        target_anchor: Some(Anchor::CenterRight),
-        offset_x: Val::ZERO,
-        offset_y: Val::ZERO,
-        clamp_padding: UiRect::ZERO,
-    };
-
-    /// Show tooltip above target.
-    pub const TOP: Self = Self {
-        tooltip_anchor: Anchor::BottomCenter,
-        target_anchor: Some(Anchor::TopCenter),
-        offset_x: Val::ZERO,
-        offset_y: Val::ZERO,
-        clamp_padding: UiRect::ZERO,
-    };
-
-    /// Show tooltip below target.
-    pub const BOTTOM: Self = Self {
-        tooltip_anchor: Anchor::TopCenter,
-        target_anchor: Some(Anchor::BottomCenter),
-        offset_x: Val::ZERO,
-        offset_y: Val::ZERO,
-        clamp_padding: UiRect::ZERO,
-    };
+impl From<Vec2> for TooltipPlacement {
+    fn from(value: Vec2) -> Self {
+        Self {
+            tooltip_anchor: Anchor::TopLeft,
+            target_anchor: None,
+            offset_x: Val::Px(value.x),
+            offset_y: Val::Px(value.y),
+            clamp_padding: UiRect::ZERO,
+        }
+    }
 }
 
 impl Default for TooltipPlacement {
@@ -116,9 +114,9 @@ fn place_tooltip(
 ) {
     rq!(matches!(ctx.state, TooltipState::Active));
     let (target_gt, target_node) = rq!(target_query.get(ctx.target));
-    let entity = match &ctx.tooltip.entity {
-        TooltipEntity::Primary(_) => primary.container,
-        &TooltipEntity::Custom(id) => id,
+    let entity = match &ctx.tooltip.content {
+        TooltipContent::Primary(_) => primary.container,
+        &TooltipContent::Custom(id) => id,
     };
     let (mut style, mut transform, gt, node) = or_return!(tooltip_query.get_mut(entity));
 

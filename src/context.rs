@@ -19,7 +19,7 @@ use bevy_ui::{Interaction, UiStack};
 use bevy_window::{PrimaryWindow, Window, WindowRef};
 use tiny_bail::prelude::*;
 
-use crate::{PrimaryTooltip, Tooltip, TooltipEntity, TooltipSet};
+use crate::{PrimaryTooltip, Tooltip, TooltipContent, TooltipSet};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<TooltipContext>();
@@ -65,7 +65,7 @@ impl Default for TooltipContext {
             target: Entity::PLACEHOLDER,
             timer: 0,
             cursor_pos: Vec2::ZERO,
-            tooltip: Tooltip::custom(Entity::PLACEHOLDER),
+            tooltip: Tooltip::new(Entity::PLACEHOLDER),
         }
     }
 }
@@ -84,9 +84,9 @@ fn update_tooltip_context(
 ) {
     let old_active = matches!(ctx.state, TooltipState::Active);
     let old_target = ctx.target;
-    let old_entity = match ctx.tooltip.entity {
-        TooltipEntity::Primary(_) => primary.container,
-        TooltipEntity::Custom(id) => id,
+    let old_entity = match ctx.tooltip.content {
+        TooltipContent::Primary(_) => primary.container,
+        TooltipContent::Custom(id) => id,
     };
 
     // TODO: Reconsider whether this is the right way to detect cursor movement.
@@ -234,14 +234,14 @@ fn show_tooltip(
     mut text_query: Query<&mut Text>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
-    let entity = match &mut ctx.tooltip.entity {
-        TooltipEntity::Primary(ref mut text) => {
+    let entity = match &mut ctx.tooltip.content {
+        TooltipContent::Primary(ref mut text) => {
             if let Ok(mut primary_text) = text_query.get_mut(primary.text) {
                 *primary_text = std::mem::take(text);
             }
             primary.container
         }
-        TooltipEntity::Custom(id) => *id,
+        TooltipContent::Custom(id) => *id,
     };
     *r!(visibility_query.get_mut(entity)) = Visibility::Visible;
 }
