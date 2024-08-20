@@ -44,40 +44,47 @@ mod placement;
 pub mod prelude {
     pub use super::{
         PrimaryTooltip, Tooltip, TooltipActivation, TooltipEntity, TooltipPlacement, TooltipPlugin,
-        TooltipTransfer,
+        TooltipSet, TooltipTransfer,
     };
 }
 
-use bevy_app::Plugin;
+use bevy_app::{Plugin, PostUpdate, PreUpdate};
 use bevy_color::Color;
 use bevy_core::Name;
 #[cfg(feature = "bevy_reflect")]
 use bevy_ecs::reflect::{ReflectComponent, ReflectResource};
-use bevy_ecs::{component::Component, entity::Entity, system::Resource, world::World};
+use bevy_ecs::{
+    component::Component,
+    entity::Entity,
+    schedule::{IntoSystemSetConfigs as _, SystemSet},
+    system::Resource,
+    world::World,
+};
 use bevy_hierarchy::BuildWorldChildren as _;
 use bevy_render::view::Visibility;
-use bevy_text::{Text, TextSection, TextStyle};
+use bevy_text::{JustifyText, Text, TextSection, TextStyle};
+use bevy_transform::TransformSystem;
 use bevy_ui::{
     node_bundles::{NodeBundle, TextBundle},
-    PositionType, Style, UiRect, Val, ZIndex,
+    PositionType, Style, UiRect, UiSystem, Val, ZIndex,
 };
 
 pub use placement::TooltipPlacement;
 
 /// A [`Plugin`] that sets up the tooltip widget system.
-#[derive(Default)]
 pub struct TooltipPlugin {
     /// Set a custom entity for [`PrimaryTooltip::container`], or spawn the default container
     /// entity if `None`.
     ///
     /// This entity should include all of the components of [`NodeBundle`], with
     /// [`Visibility::Hidden`] and [`Style::position_type`] set to [`PositionType::Absolute`].
-    pub container: Option<Entity>,
+    pub container: Entity,
     /// Set a custom entity for [`PrimaryTooltip::text`], or spawn the default text entity if
     /// `None`.
     ///
-    /// This entity should include all of the components of [`TextBundle`].
-    pub text: Option<Entity>,
+    /// This entity should include all of the components of [`TextBundle`] and be a child of
+    /// [`Self::container`].
+    pub text: Entity,
 }
 
 impl Plugin for TooltipPlugin {
@@ -88,7 +95,26 @@ impl Plugin for TooltipPlugin {
 
         app.register_type::<Tooltip>();
 
+        app.configure_sets(PreUpdate, (UiSystem::Focus, TooltipSet::Content).chain());
+        app.configure_sets(
+            PostUpdate,
+            (
+                UiSystem::Layout,
+                TooltipSet::Placement,
+                TransformSystem::TransformPropagate,
+            )
+                .chain(),
+        );
         app.add_plugins((context::plugin, placement::plugin));
+    }
+}
+
+impl Default for TooltipPlugin {
+    fn default() -> Self {
+        Self {
+            container: Entity::PLACEHOLDER,
+            text: Entity::PLACEHOLDER,
+        }
     }
 }
 
@@ -109,14 +135,17 @@ pub struct PrimaryTooltip {
 }
 
 impl PrimaryTooltip {
-    fn new(world: &mut World, container: Option<Entity>, text: Option<Entity>) -> Self {
-        let container = container.unwrap_or_else(|| {
+    fn new(world: &mut World, container: Entity, text: Entity) -> Self {
+        let container = if container != Entity::PLACEHOLDER {
+            container
+        } else {
             world
                 .spawn((
                     Name::new("PrimaryTooltip"),
                     NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,
+                            max_width: Val::Vw(40.0),
                             padding: UiRect::all(Val::Px(8.0)),
                             ..Default::default()
                         },
@@ -127,14 +156,16 @@ impl PrimaryTooltip {
                     },
                 ))
                 .id()
-        });
+        };
 
-        let text = text.unwrap_or_else(|| {
+        let text = if text != Entity::PLACEHOLDER {
+            text
+        } else {
             world
                 .spawn((Name::new("Text"), TextBundle::default()))
                 .set_parent(container)
                 .id()
-        });
+        };
 
         Self { container, text }
     }
@@ -151,7 +182,7 @@ impl PrimaryTooltip {
 /// - [`TooltipActivation::IDLE`]
 /// - [`TooltipTransfer::NONE`]
 /// - [`TooltipPlacement::CURSOR`]
-#[derive(Component)]
+#[derive(Component, Clone, Debug)]
 #[cfg_attr(
     feature = "bevy_reflect",
     derive(bevy_reflect::Reflect),
@@ -179,6 +210,11 @@ impl Tooltip {
         }
     }
 
+    /// Use a custom tooltip entity and default behavior.
+    pub fn custom(entity: Entity) -> Self {
+        Self::new(TooltipEntity::Custom(entity))
+    }
+
     /// Use the primary tooltip entity with a single [`TextSection`] and default behavior.
     pub fn from_section(value: impl Into<String>, style: TextStyle) -> Self {
         Self::new(TooltipEntity::Primary(Text::from_section(value, style)))
@@ -194,9 +230,16 @@ impl Tooltip {
         Self::new(TooltipEntity::Primary(text.into()))
     }
 
-    /// Use a custom tooltip entity and default behavior.
-    pub fn custom(entity: Entity) -> Self {
-        Self::new(TooltipEntity::Custom(entity))
+    /// Set the [`JustifyText`].
+    ///
+    /// NOTE: This does nothing with a custom tooltip.
+    pub fn with_justify_text(mut self, justify_text: JustifyText) -> Self {
+        match &mut self.entity {
+            TooltipEntity::Primary(text) => text.justify = justify_text,
+            // TODO: Warn?
+            _ => (),
+        }
+        self
     }
 
     /// Set a custom [`TooltipActivation`].
@@ -340,4 +383,13 @@ pub enum TooltipEntity {
     Primary(Text),
     /// Use a fully custom entity as the tooltip.
     Custom(Entity),
+}
+
+/// A [`SystemSet`] for tooltip systems.
+#[derive(SystemSet, Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub enum TooltipSet {
+    /// Update and show / hide the tooltip content (runs in [`PreUpdate`]).
+    Content,
+    /// Position the tooltip using its calculated size (runs in [`PostUpdate`]).
+    Placement,
 }

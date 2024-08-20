@@ -19,7 +19,7 @@ use bevy_ui::{Interaction, UiStack};
 use bevy_window::{PrimaryWindow, Window, WindowRef};
 use tiny_bail::prelude::*;
 
-use crate::{PrimaryTooltip, Tooltip, TooltipActivation, TooltipEntity, TooltipTransfer};
+use crate::{PrimaryTooltip, Tooltip, TooltipEntity, TooltipSet};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<TooltipContext>();
@@ -33,7 +33,8 @@ pub(super) fn plugin(app: &mut App) {
             hide_tooltip.run_if(on_event::<HideTooltip>()),
             show_tooltip.run_if(on_event::<ShowTooltip>()),
         )
-            .chain(),
+            .chain()
+            .in_set(TooltipSet::Content),
     );
 }
 
@@ -53,12 +54,8 @@ pub(crate) struct TooltipContext {
     timer: u16,
     /// The current cursor position or activation point.
     pub(crate) cursor_pos: Vec2,
-    /// The current activation conditions.
-    activation: TooltipActivation,
-    /// The current transfer conditions.
-    transfer: TooltipTransfer,
-    /// The tooltip container entity.
-    entity: TooltipEntity,
+    /// The current tooltip parameters.
+    pub(crate) tooltip: Tooltip,
 }
 
 impl Default for TooltipContext {
@@ -68,9 +65,7 @@ impl Default for TooltipContext {
             target: Entity::PLACEHOLDER,
             timer: 0,
             cursor_pos: Vec2::ZERO,
-            activation: TooltipActivation::IMMEDIATE,
-            transfer: TooltipTransfer::NONE,
-            entity: TooltipEntity::Custom(Entity::PLACEHOLDER),
+            tooltip: Tooltip::custom(Entity::PLACEHOLDER),
         }
     }
 }
@@ -89,7 +84,7 @@ fn update_tooltip_context(
 ) {
     let old_active = matches!(ctx.state, TooltipState::Active);
     let old_target = ctx.target;
-    let old_entity = match ctx.entity {
+    let old_entity = match ctx.tooltip.entity {
         TooltipEntity::Primary(_) => primary.container,
         TooltipEntity::Custom(id) => id,
     };
@@ -111,14 +106,14 @@ fn update_tooltip_context(
         // Reset activation delay on cursor move.
         if ctx.cursor_pos != cursor_pos
             && matches!(ctx.state, TooltipState::Delayed)
-            && ctx.activation.reset_delay_on_cursor_move
+            && ctx.tooltip.activation.reset_delay_on_cursor_move
         {
-            ctx.timer = ctx.activation.delay;
+            ctx.timer = ctx.tooltip.activation.delay;
         }
 
         // Dismiss tooltip if cursor has left the activation radius.
         if matches!(ctx.state, TooltipState::Active)
-            && ctx.cursor_pos.distance_squared(cursor_pos) > ctx.activation.dismiss_radius
+            && ctx.cursor_pos.distance_squared(cursor_pos) > ctx.tooltip.activation.dismiss_radius
         {
             ctx.state = TooltipState::Dismissed;
         }
@@ -147,7 +142,7 @@ fn update_tooltip_context(
             Interaction::Pressed => {
                 ctx.target = entity;
                 ctx.state = TooltipState::Dismissed;
-                ctx.transfer = tooltip.transfer;
+                ctx.tooltip.transfer = tooltip.transfer;
                 found_target = true;
                 break;
             }
@@ -164,8 +159,8 @@ fn update_tooltip_context(
         ctx.state = if tooltip.activation.delay == 0
             || (matches!(ctx.state, TooltipState::Inactive)
                 && ctx.timer > 0
-                && ctx.transfer.layer >= tooltip.transfer.layer
-                && (matches!((ctx.transfer.group, tooltip.transfer.group), (Some(x), Some(y)) if x == y)
+                && ctx.tooltip.transfer.layer >= tooltip.transfer.layer
+                && (matches!((ctx.tooltip.transfer.group, tooltip.transfer.group), (Some(x), Some(y)) if x == y)
                     || ctx.target == entity))
         {
             TooltipState::Active
@@ -173,21 +168,20 @@ fn update_tooltip_context(
             TooltipState::Delayed
         };
         ctx.timer = tooltip.activation.delay;
-        ctx.activation = tooltip.activation;
-        ctx.activation.dismiss_radius *= ctx.activation.dismiss_radius;
-        ctx.transfer = tooltip.transfer;
-        ctx.entity = tooltip.entity.clone();
+        ctx.tooltip = tooltip.clone();
+        ctx.tooltip.activation.dismiss_radius *= ctx.tooltip.activation.dismiss_radius;
         found_target = true;
         break;
     }
 
     // There is no longer a target entity.
     if !found_target && !matches!(ctx.state, TooltipState::Inactive) {
-        ctx.timer = if matches!(ctx.state, TooltipState::Active) || !ctx.transfer.from_active {
-            ctx.transfer.timeout
-        } else {
-            0
-        };
+        ctx.timer =
+            if matches!(ctx.state, TooltipState::Active) || !ctx.tooltip.transfer.from_active {
+                ctx.tooltip.transfer.timeout
+            } else {
+                0
+            };
         ctx.state = TooltipState::Inactive;
     }
 
@@ -240,7 +234,7 @@ fn show_tooltip(
     mut text_query: Query<&mut Text>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
-    let entity = match &mut ctx.entity {
+    let entity = match &mut ctx.tooltip.entity {
         TooltipEntity::Primary(ref mut text) => {
             if let Ok(mut primary_text) = text_query.get_mut(primary.text) {
                 *primary_text = std::mem::take(text);

@@ -9,25 +9,17 @@ use bevy_hierarchy::Parent;
 use bevy_math::Vec2;
 use bevy_render::camera::Camera;
 use bevy_sprite::Anchor;
-use bevy_transform::{
-    components::{GlobalTransform, Transform},
-    TransformSystem,
-};
-use bevy_ui::{IsDefaultUiCamera, Node, Style, TargetCamera, UiRect, UiSystem, Val};
+use bevy_transform::components::{GlobalTransform, Transform};
+use bevy_ui::{IsDefaultUiCamera, Node, Style, TargetCamera, UiRect, Val};
 use tiny_bail::prelude::*;
 
 use crate::{
     context::{TooltipContext, TooltipState},
-    PrimaryTooltip, Tooltip, TooltipEntity,
+    PrimaryTooltip, TooltipEntity, TooltipSet,
 };
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
-        PostUpdate,
-        place_tooltip
-            .after(UiSystem::Layout)
-            .before(TransformSystem::TransformPropagate),
-    );
+    app.add_systems(PostUpdate, place_tooltip.in_set(TooltipSet::Placement));
 }
 
 /// The tooltip placement configuration.
@@ -119,16 +111,16 @@ fn place_tooltip(
     target_camera_query: Query<&TargetCamera>,
     parent_query: Query<&Parent>,
     default_camera_query: Query<(Entity, &Camera), With<IsDefaultUiCamera>>,
-    target_query: Query<(&Tooltip, &GlobalTransform, &Node)>,
+    target_query: Query<(&GlobalTransform, &Node)>,
     mut tooltip_query: Query<(&mut Style, &mut Transform, &GlobalTransform, &Node)>,
 ) {
     rq!(matches!(ctx.state, TooltipState::Active));
-    let (tooltip, target_gt, target_node) = r!(target_query.get(ctx.target));
-    let entity = match &tooltip.entity {
+    let (target_gt, target_node) = rq!(target_query.get(ctx.target));
+    let entity = match &ctx.tooltip.entity {
         TooltipEntity::Primary(_) => primary.container,
         &TooltipEntity::Custom(id) => id,
     };
-    let (mut style, mut transform, gt, node) = r!(tooltip_query.get_mut(entity));
+    let (mut style, mut transform, gt, node) = or_return!(tooltip_query.get_mut(entity));
 
     // Identify the target camera and viewport rect.
     let (camera_entity, camera) = if let Ok(camera) = camera_query.get_single() {
@@ -149,8 +141,10 @@ fn place_tooltip(
     // Insert instead of mutate because the tooltip entity might not spawn with a `TargetCamera` component.
     commands.entity(entity).insert(TargetCamera(camera_entity));
 
+    let placement = &ctx.tooltip.placement;
+
     // Calculate target position.
-    let mut pos = if let Some(target_anchor) = tooltip.placement.target_anchor {
+    let mut pos = if let Some(target_anchor) = placement.target_anchor {
         let target_rect = target_node.logical_rect(target_gt);
         target_rect.center() - target_rect.size() * target_anchor.as_vec() * Vec2::new(-1.0, 1.0)
     } else {
@@ -160,21 +154,13 @@ fn place_tooltip(
     // Apply tooltip anchor to target position.
     let tooltip_rect = node.logical_rect(gt);
     let tooltip_anchor =
-        tooltip_rect.size() * tooltip.placement.tooltip_anchor.as_vec() * Vec2::new(-1.0, 1.0);
+        tooltip_rect.size() * placement.tooltip_anchor.as_vec() * Vec2::new(-1.0, 1.0);
     pos += tooltip_anchor;
 
     // Resolve offset `Val`s.
     let size = viewport.size();
-    let offset_x = tooltip
-        .placement
-        .offset_x
-        .resolve(size.x, size)
-        .unwrap_or_default();
-    let offset_y = tooltip
-        .placement
-        .offset_y
-        .resolve(size.y, size)
-        .unwrap_or_default();
+    let offset_x = placement.offset_x.resolve(size.x, size).unwrap_or_default();
+    let offset_y = placement.offset_y.resolve(size.y, size).unwrap_or_default();
 
     // Apply offset.
     pos += Vec2::new(offset_x, offset_y);
@@ -185,7 +171,7 @@ fn place_tooltip(
         right,
         top,
         bottom,
-    } = tooltip.placement.clamp_padding;
+    } = placement.clamp_padding;
     let left = left.resolve(size.x, size).unwrap_or_default();
     let right = right.resolve(size.x, size).unwrap_or_default();
     let top = top.resolve(size.x, size).unwrap_or_default();
@@ -218,6 +204,24 @@ fn place_tooltip(
     // This system has to run after `UiSystem::Layout` so that its size is calculated
     // from the updated text. However, that means that `Style` positioning will be
     // delayed by 1 frame. As a workaround, update the `Transform` directly as well.
+    pos = round_layout_coords(pos);
     transform.translation.x = pos.x;
     transform.translation.y = pos.y;
+}
+
+/// Taken from `bevy_ui`, used in `ui_layout_system`.
+fn round_ties_up(value: f32) -> f32 {
+    if value.fract() != -0.5 {
+        value.round()
+    } else {
+        value.ceil()
+    }
+}
+
+/// Taken from `bevy_ui`, used in `ui_layout_system`.
+fn round_layout_coords(value: Vec2) -> Vec2 {
+    Vec2 {
+        x: round_ties_up(value.x),
+        y: round_ties_up(value.y),
+    }
 }
