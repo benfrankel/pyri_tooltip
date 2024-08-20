@@ -14,22 +14,21 @@
 //! app.add_plugins(TooltipPlugin::default());
 //! ```
 //!
-//! Spawn a UI node with a [`Tooltip`]:
+//! Spawn a UI node with [`Interaction`](bevy_ui::Interaction) and [`Tooltip`] components:
 //!
 //! ```ignore
 //! commands.spawn((
 //!     NodeBundle::default(),
 //!     Interaction::default(),
-//!     Tooltip::from_section("Hello, world!", TextStyle::default()),
+//!     Tooltip::cursor("Hello, world!"),
 //! ));
 //! ```
 //!
 //! # Advanced
 //!
-//! To customize tooltip behavior, see [`Tooltip`].
+//! To customize the behavior and appearance of a tooltip, see [`Tooltip`].
 //!
-//! To set a custom primary tooltip, see [`TooltipPlugin`] and [`PrimaryTooltip`].
-//! For fully custom per-entity tooltips, use [`TooltipContent::Custom`].
+//! To replace the default primary tooltip, see [`TooltipPlugin`] and [`PrimaryTooltip`].
 
 mod context;
 mod placement;
