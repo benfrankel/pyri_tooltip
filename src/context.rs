@@ -155,7 +155,6 @@ fn update_tooltip_context(
         }
 
         // Switch to the new target entity.
-        ctx.target = entity;
         ctx.state = if tooltip.activation.delay == 0
             || (matches!(ctx.state, TooltipState::Inactive)
                 && ctx.timer > 0
@@ -167,6 +166,7 @@ fn update_tooltip_context(
         } else {
             TooltipState::Delayed
         };
+        ctx.target = entity;
         ctx.timer = tooltip.activation.delay;
         ctx.tooltip = tooltip.clone();
         ctx.tooltip.dismissal.on_distance *= ctx.tooltip.dismissal.on_distance;
