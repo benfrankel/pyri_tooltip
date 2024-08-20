@@ -146,11 +146,10 @@ impl PrimaryTooltip {
                     NodeBundle {
                         style: Style {
                             position_type: PositionType::Absolute,
-                            max_width: Val::Vw(40.0),
                             padding: UiRect::all(Val::Px(8.0)),
                             ..Default::default()
                         },
-                        background_color: Color::srgba(0.2, 0.2, 0.3, 0.95).into(),
+                        background_color: Color::srgba(0.106, 0.118, 0.122, 0.9).into(),
                         visibility: Visibility::Hidden,
                         z_index: ZIndex::Global(999),
                         ..Default::default()
