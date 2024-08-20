@@ -5,8 +5,8 @@ edition = "2021"
 description = "Powerful tooltips for Bevy"
 repository = "https://github.com/benfrankel/pyri_tooltip"
 license = "MIT OR Apache-2.0"
-keywords = ["ui", "game", "bevy"]
-categories = ["game-engines"]
+keywords = ["game", "bevy", "ui", "tooltip", "widget"]
+categories = ["game-development", "gui"]
 
 [features]
 default = ["bevy_reflect"]

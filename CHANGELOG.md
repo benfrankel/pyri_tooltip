@@ -2,8 +2,8 @@
 
 - **Initial release**
 - Added `TooltipPlugin` plugin
-- Added `TooltipSet` system set
 - Added `PrimaryTooltip` resource
+- Added `TooltipSet` system set
 - Added `Tooltip` component
     - Added `TooltipActivation` field
     - Added `TooltipDismissal` field
