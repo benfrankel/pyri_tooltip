@@ -10,18 +10,22 @@
 //!
 //! Add [`TooltipPlugin`] to set up the tooltip system:
 //!
-//! ```ignore
+//! ```
+//! # /*
 //! app.add_plugins(TooltipPlugin::default());
+//! # */
 //! ```
 //!
 //! Spawn a UI node with [`Interaction`](bevy_ui::Interaction) and [`Tooltip`] components:
 //!
-//! ```ignore
+//! ```
+//! # /*
 //! commands.spawn((
 //!     NodeBundle::default(),
 //!     Interaction::default(),
 //!     Tooltip::cursor("Hello, world!"),
 //! ));
+//! # */
 //! ```
 //!
 //! # Advanced
@@ -173,14 +177,9 @@ impl PrimaryTooltip {
 // TODO: Animation, wedge (like a speech bubble), easier content customization / icons.
 /// A [`Component`] that specifies a tooltip to be displayed on hover.
 ///
-/// This will only work on entities that also include the following components:
-/// - [`NodeBundle`] components
+/// This will only work for entities that also include the following:
+/// - [`NodeBundle`]
 /// - [`Interaction`](bevy_ui::Interaction)
-///
-/// The default behavior consists of the following values:
-/// - [`TooltipActivation::IDLE`]
-/// - [`TooltipTransfer::NONE`]
-/// - [`TooltipPlacement::CURSOR`]
 #[derive(Component, Clone, Debug)]
 #[cfg_attr(
     feature = "bevy_reflect",
@@ -194,7 +193,7 @@ pub struct Tooltip {
     pub dismissal: TooltipDismissal,
     /// The conditions for skipping the next tooltip's activation delay.
     pub transfer: TooltipTransfer,
-    /// How the position of the tooltip entity should be determined.
+    /// How the position of the tooltip entity will be determined.
     pub placement: TooltipPlacement,
     /// The tooltip entity and content to be displayed.
     pub content: TooltipContent,
@@ -223,7 +222,7 @@ impl Tooltip {
         }
     }
 
-    /// Set [`JustifyText`].
+    /// Change the text justification.
     ///
     /// NOTE: This does nothing for custom tooltips.
     pub fn with_justify(mut self, justify_text: JustifyText) -> Self {
@@ -234,25 +233,25 @@ impl Tooltip {
         self
     }
 
-    /// Set [`TooltipActivation`].
+    /// Set a custom [`TooltipActivation`].
     pub fn with_activation(mut self, activation: impl Into<TooltipActivation>) -> Self {
         self.activation = activation.into();
         self
     }
 
-    /// Set [`TooltipDismissal`].
+    /// Set a custom [`TooltipDismissal`].
     pub fn with_dismissal(mut self, dismissal: impl Into<TooltipDismissal>) -> Self {
         self.dismissal = dismissal.into();
         self
     }
 
-    /// Set [`TooltipTransfer`].
+    /// Set a custom [`TooltipTransfer`].
     pub fn with_transfer(mut self, transfer: impl Into<TooltipTransfer>) -> Self {
         self.transfer = transfer.into();
         self
     }
 
-    /// Set [`TooltipPlacement`].
+    /// Set a custom [`TooltipPlacement`].
     pub fn with_placement(mut self, placement: impl Into<TooltipPlacement>) -> Self {
         self.placement = placement.into();
         self

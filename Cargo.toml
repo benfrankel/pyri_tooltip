@@ -1,6 +1,6 @@
 [package]
 name = "pyri_tooltip"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Powerful tooltips for Bevy"
 repository = "https://github.com/benfrankel/pyri_tooltip"
