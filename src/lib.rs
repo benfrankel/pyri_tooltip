@@ -187,38 +187,38 @@ impl PrimaryTooltip {
     reflect(Component)
 )]
 pub struct Tooltip {
+    /// The tooltip content to display.
+    pub content: TooltipContent,
+    /// How the tooltip will be positioned.
+    pub placement: TooltipPlacement,
     /// The conditions for activating the tooltip.
     pub activation: TooltipActivation,
     /// The conditions for dismissing the tooltip.
     pub dismissal: TooltipDismissal,
     /// The conditions for skipping the next tooltip's activation delay.
     pub transfer: TooltipTransfer,
-    /// How the position of the tooltip entity will be determined.
-    pub placement: TooltipPlacement,
-    /// The tooltip entity and content to be displayed.
-    pub content: TooltipContent,
 }
 
 impl Tooltip {
     /// Create a new fixed `Tooltip`.
     pub fn fixed(placement: Anchor, content: impl Into<TooltipContent>) -> Self {
         Self {
+            content: content.into(),
+            placement: placement.into(),
             activation: TooltipActivation::IMMEDIATE,
             dismissal: TooltipDismissal::NONE,
             transfer: TooltipTransfer::SHORT,
-            placement: placement.into(),
-            content: content.into(),
         }
     }
 
     /// Create a new cursor `Tooltip`.
     pub fn cursor(content: impl Into<TooltipContent>) -> Self {
         Self {
+            content: content.into(),
+            placement: TooltipPlacement::CURSOR,
             activation: TooltipActivation::IDLE,
             dismissal: TooltipDismissal::ON_CLICK,
             transfer: TooltipTransfer::NONE,
-            placement: TooltipPlacement::CURSOR,
-            content: content.into(),
         }
     }
 
@@ -230,6 +230,12 @@ impl Tooltip {
         if let TooltipContent::Primary(text) = &mut self.content {
             text.justify = justify_text;
         }
+        self
+    }
+
+    /// Set a custom [`TooltipPlacement`].
+    pub fn with_placement(mut self, placement: impl Into<TooltipPlacement>) -> Self {
+        self.placement = placement.into();
         self
     }
 
@@ -250,11 +256,51 @@ impl Tooltip {
         self.transfer = transfer.into();
         self
     }
+}
 
-    /// Set a custom [`TooltipPlacement`].
-    pub fn with_placement(mut self, placement: impl Into<TooltipPlacement>) -> Self {
-        self.placement = placement.into();
-        self
+/// Tooltip content to be displayed.
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
+pub enum TooltipContent {
+    /// Display the primary tooltip with custom [`Text`].
+    Primary(Text),
+    /// Display a fully custom entity as the tooltip.
+    Custom(Entity),
+}
+
+impl From<&str> for TooltipContent {
+    fn from(value: &str) -> Self {
+        Self::Primary(Text::from_section(value.to_string(), TextStyle::default()))
+    }
+}
+
+impl From<String> for TooltipContent {
+    fn from(value: String) -> Self {
+        Self::Primary(Text::from_section(value, TextStyle::default()))
+    }
+}
+
+impl From<TextSection> for TooltipContent {
+    fn from(value: TextSection) -> Self {
+        Self::Primary(Text::from_section(value.value, value.style))
+    }
+}
+
+impl From<Vec<TextSection>> for TooltipContent {
+    fn from(value: Vec<TextSection>) -> Self {
+        Self::Primary(Text::from_sections(value))
+    }
+}
+
+impl From<Text> for TooltipContent {
+    fn from(value: Text) -> Self {
+        Self::Primary(value)
+    }
+}
+
+impl From<Entity> for TooltipContent {
+    fn from(value: Entity) -> Self {
+        Self::Custom(value)
     }
 }
 
@@ -361,9 +407,9 @@ impl Default for TooltipDismissal {
     }
 }
 
-/// The tooltip transfer conditions.
+/// Tooltip transfer conditions.
 ///
-/// When a transfer occurs, the next tooltip's activation delay will be skipped.
+/// When a transfer occurs, the next tooltip's [activation delay](TooltipActivation::delay) will be skipped.
 ///
 /// Defaults to [`Self::NONE`].
 #[derive(Copy, Clone, Debug)]
@@ -411,52 +457,6 @@ impl From<u16> for TooltipTransfer {
 impl Default for TooltipTransfer {
     fn default() -> Self {
         Self::NONE
-    }
-}
-
-/// The tooltip entity and content to be displayed.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
-pub enum TooltipContent {
-    /// Use the primary tooltip entity with custom [`Text`].
-    Primary(Text),
-    /// Use a fully custom entity as the tooltip.
-    Custom(Entity),
-}
-
-impl From<&str> for TooltipContent {
-    fn from(value: &str) -> Self {
-        Self::Primary(Text::from_section(value.to_string(), TextStyle::default()))
-    }
-}
-
-impl From<String> for TooltipContent {
-    fn from(value: String) -> Self {
-        Self::Primary(Text::from_section(value, TextStyle::default()))
-    }
-}
-
-impl From<TextSection> for TooltipContent {
-    fn from(value: TextSection) -> Self {
-        Self::Primary(Text::from_section(value.value, value.style))
-    }
-}
-
-impl From<Vec<TextSection>> for TooltipContent {
-    fn from(value: Vec<TextSection>) -> Self {
-        Self::Primary(Text::from_sections(value))
-    }
-}
-
-impl From<Text> for TooltipContent {
-    fn from(value: Text) -> Self {
-        Self::Primary(value)
-    }
-}
-
-impl From<Entity> for TooltipContent {
-    fn from(value: Entity) -> Self {
-        Self::Custom(value)
     }
 }
 
