@@ -1,16 +1,13 @@
 use bevy_app::{App, PostUpdate};
 use bevy_ecs::{
-    entity::Entity,
-    query::With,
     schedule::IntoSystemConfigs as _,
     system::{Commands, Query, Res},
 };
-use bevy_hierarchy::Parent;
 use bevy_math::Vec2;
 use bevy_render::camera::Camera;
 use bevy_sprite::Anchor;
 use bevy_transform::components::{GlobalTransform, Transform};
-use bevy_ui::{IsDefaultUiCamera, Node, Style, TargetCamera, UiRect, Val};
+use bevy_ui::{DefaultUiCamera, Node, Style, TargetCamera, UiRect, Val};
 use tiny_bail::prelude::*;
 
 use crate::{
@@ -105,11 +102,10 @@ fn place_tooltip(
     mut commands: Commands,
     ctx: Res<TooltipContext>,
     primary: Res<PrimaryTooltip>,
-    camera_query: Query<(Entity, &Camera)>,
-    target_camera_query: Query<&TargetCamera>,
-    parent_query: Query<&Parent>,
-    default_camera_query: Query<(Entity, &Camera), With<IsDefaultUiCamera>>,
     target_query: Query<(&GlobalTransform, &Node)>,
+    target_camera_query: Query<&TargetCamera>,
+    default_ui_camera: DefaultUiCamera,
+    camera_query: Query<&Camera>,
     mut tooltip_query: Query<(&mut Style, &mut Transform, &GlobalTransform, &Node)>,
 ) {
     rq!(matches!(ctx.state, TooltipState::Active));
@@ -118,23 +114,15 @@ fn place_tooltip(
         TooltipContent::Primary(_) => primary.container,
         &TooltipContent::Custom(id) => id,
     };
-    let (mut style, mut transform, gt, node) = or_return!(tooltip_query.get_mut(entity));
+    let (mut style, mut transform, gt, node) = r!(tooltip_query.get_mut(entity));
 
     // Identify the target camera and viewport rect.
-    let (camera_entity, camera) = if let Ok(camera) = camera_query.get_single() {
-        camera
-    } else {
-        let mut target = ctx.target;
-        loop {
-            if let Ok(target_camera) = target_camera_query.get(target) {
-                break r!(camera_query.get(target_camera.0));
-            } else if let Ok(parent) = parent_query.get(target) {
-                target = parent.get();
-            } else {
-                break r!(default_camera_query.get_single());
-            }
-        }
-    };
+    let camera_entity = r!(target_camera_query
+        .get(ctx.target)
+        .map(TargetCamera::entity)
+        .ok()
+        .or(default_ui_camera.get()));
+    let camera = r!(camera_query.get(camera_entity));
     let viewport = r!(camera.logical_viewport_rect());
     // Insert instead of mutate because the tooltip entity might not spawn with a `TargetCamera` component.
     commands.entity(entity).insert(TargetCamera(camera_entity));
