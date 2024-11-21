@@ -13,13 +13,12 @@ use bevy_render::{
     camera::{Camera, RenderTarget},
     view::Visibility,
 };
-use bevy_text::Text;
 use bevy_time::Time;
 use bevy_ui::{Interaction, UiStack};
 use bevy_window::{PrimaryWindow, Window, WindowRef};
 use tiny_bail::prelude::*;
 
-use crate::{PrimaryTooltip, Tooltip, TooltipContent, TooltipSet};
+use crate::{rich_text::RichText, PrimaryTooltip, Tooltip, TooltipContent, TooltipSet};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<TooltipContext>();
@@ -30,8 +29,8 @@ pub(super) fn plugin(app: &mut App) {
         PreUpdate,
         (
             update_tooltip_context,
-            hide_tooltip.run_if(on_event::<HideTooltip>()),
-            show_tooltip.run_if(on_event::<ShowTooltip>()),
+            hide_tooltip.run_if(on_event::<HideTooltip>),
+            show_tooltip.run_if(on_event::<ShowTooltip>),
         )
             .chain()
             .in_set(TooltipSet::Content),
@@ -231,7 +230,7 @@ struct ShowTooltip;
 fn show_tooltip(
     mut ctx: ResMut<TooltipContext>,
     primary: Res<PrimaryTooltip>,
-    mut text_query: Query<&mut Text>,
+    mut text_query: Query<&mut RichText>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
     let entity = match &mut ctx.tooltip.content {

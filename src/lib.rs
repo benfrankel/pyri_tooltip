@@ -16,15 +16,11 @@
 //! # */
 //! ```
 //!
-//! Spawn a UI node with [`Interaction`](bevy_ui::Interaction) and [`Tooltip`] components:
+//! Spawn a UI node with the [`Tooltip`] component:
 //!
 //! ```
 //! # /*
-//! commands.spawn((
-//!     NodeBundle::default(),
-//!     Interaction::default(),
-//!     Tooltip::cursor("Hello, world!"),
-//! ));
+//! commands.spawn(Tooltip::cursor("Hello, world!"));
 //! # */
 //! ```
 //!
@@ -36,6 +32,7 @@
 
 mod context;
 mod placement;
+mod rich_text;
 
 /// Re-exports for commonly used types.
 ///
@@ -46,6 +43,7 @@ mod placement;
 /// ```
 pub mod prelude {
     pub use super::{
+        rich_text::{RichText, TextSection, TextStyle},
         PrimaryTooltip, Tooltip, TooltipActivation, TooltipContent, TooltipPlacement,
         TooltipPlugin, TooltipSet, TooltipTransfer,
     };
@@ -63,31 +61,31 @@ use bevy_ecs::{
     system::Resource,
     world::World,
 };
-use bevy_hierarchy::BuildWorldChildren as _;
+use bevy_hierarchy::BuildChildren as _;
 use bevy_render::view::Visibility;
 use bevy_sprite::Anchor;
-use bevy_text::{JustifyText, Text, TextSection, TextStyle};
+use bevy_text::JustifyText;
 use bevy_transform::TransformSystem;
 use bevy_ui::{
-    node_bundles::{NodeBundle, TextBundle},
-    PositionType, Style, UiRect, UiSystem, Val, ZIndex,
+    BackgroundColor, GlobalZIndex, Interaction, Node, PositionType, UiRect, UiSystem, Val,
 };
 
 pub use placement::TooltipPlacement;
+pub use rich_text::{RichText, TextSection, TextStyle};
 
 /// A [`Plugin`] that sets up the tooltip widget system.
 pub struct TooltipPlugin {
     /// Set a custom entity for [`PrimaryTooltip::container`], or spawn the default container
     /// entity if `None`.
     ///
-    /// This entity should include all of the components of [`NodeBundle`], with
-    /// [`Visibility::Hidden`] and [`Style::position_type`] set to [`PositionType::Absolute`].
+    /// This entity should include all of the required components of [`Node`], with
+    /// [`Visibility::Hidden`] and [`Node::position_type`] set to [`PositionType::Absolute`].
     pub container: Entity,
     /// Set a custom entity for [`PrimaryTooltip::text`], or spawn the default text entity if
     /// `None`.
     ///
-    /// This entity should include all of the components of [`TextBundle`] and be a child of
-    /// [`Self::container`].
+    /// This entity should include all of the required components of [`Node`], along with a
+    /// [`RichText`] component, and be a child of [`Self::container`].
     pub text: Entity,
 }
 
@@ -109,7 +107,7 @@ impl Plugin for TooltipPlugin {
             )
                 .chain(),
         );
-        app.add_plugins((context::plugin, placement::plugin));
+        app.add_plugins((context::plugin, placement::plugin, rich_text::plugin));
     }
 }
 
@@ -146,17 +144,14 @@ impl PrimaryTooltip {
             world
                 .spawn((
                     Name::new("PrimaryTooltip"),
-                    NodeBundle {
-                        style: Style {
-                            position_type: PositionType::Absolute,
-                            padding: UiRect::all(Val::Px(8.0)),
-                            ..Default::default()
-                        },
-                        background_color: Color::srgba(0.106, 0.118, 0.122, 0.9).into(),
-                        visibility: Visibility::Hidden,
-                        z_index: ZIndex::Global(999),
+                    Node {
+                        position_type: PositionType::Absolute,
+                        padding: UiRect::all(Val::Px(8.0)),
                         ..Default::default()
                     },
+                    BackgroundColor(Color::srgba(0.106, 0.118, 0.122, 0.9)),
+                    Visibility::Hidden,
+                    GlobalZIndex(999),
                 ))
                 .id()
         };
@@ -165,7 +160,7 @@ impl PrimaryTooltip {
             text
         } else {
             world
-                .spawn((Name::new("Text"), TextBundle::default()))
+                .spawn((Name::new("Text"), Node::default(), RichText::default()))
                 .set_parent(container)
                 .id()
         };
@@ -176,11 +171,8 @@ impl PrimaryTooltip {
 
 // TODO: Animation, wedge (like a speech bubble), easier content customization / icons.
 /// A [`Component`] that specifies a tooltip to be displayed on hover.
-///
-/// This will only work for entities that also include the following:
-/// - [`NodeBundle`]
-/// - [`Interaction`](bevy_ui::Interaction)
 #[derive(Component, Clone, Debug)]
+#[require(Node, Interaction)]
 #[cfg_attr(
     feature = "bevy_reflect",
     derive(bevy_reflect::Reflect),
@@ -263,37 +255,40 @@ impl Tooltip {
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub enum TooltipContent {
     /// Display the primary tooltip with custom [`Text`].
-    Primary(Text),
+    Primary(RichText),
     /// Display a fully custom entity as the tooltip.
     Custom(Entity),
 }
 
 impl From<&str> for TooltipContent {
     fn from(value: &str) -> Self {
-        Self::Primary(Text::from_section(value.to_string(), TextStyle::default()))
+        Self::Primary(RichText::from_section(
+            value.to_string(),
+            TextStyle::default(),
+        ))
     }
 }
 
 impl From<String> for TooltipContent {
     fn from(value: String) -> Self {
-        Self::Primary(Text::from_section(value, TextStyle::default()))
+        Self::Primary(RichText::from_section(value, TextStyle::default()))
     }
 }
 
 impl From<TextSection> for TooltipContent {
     fn from(value: TextSection) -> Self {
-        Self::Primary(Text::from_section(value.value, value.style))
+        Self::Primary(RichText::from_section(value.value, value.style))
     }
 }
 
 impl From<Vec<TextSection>> for TooltipContent {
     fn from(value: Vec<TextSection>) -> Self {
-        Self::Primary(Text::from_sections(value))
+        Self::Primary(RichText::from_sections(value))
     }
 }
 
-impl From<Text> for TooltipContent {
-    fn from(value: Text) -> Self {
+impl From<RichText> for TooltipContent {
+    fn from(value: RichText) -> Self {
         Self::Primary(value)
     }
 }

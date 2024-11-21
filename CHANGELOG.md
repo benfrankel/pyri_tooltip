@@ -1,3 +1,10 @@
+# Version 0.2.0
+
+- **Updated to Bevy 0.15**
+- Added `RichText` component
+- Added `TextSection` type
+- Added `TextStyle` type
+
 # Version 0.1.0
 
 - **Initial release**

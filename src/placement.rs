@@ -3,11 +3,11 @@ use bevy_ecs::{
     schedule::IntoSystemConfigs as _,
     system::{Commands, Query, Res},
 };
-use bevy_math::Vec2;
+use bevy_math::{Rect, Vec2};
 use bevy_render::camera::Camera;
 use bevy_sprite::Anchor;
 use bevy_transform::components::{GlobalTransform, Transform};
-use bevy_ui::{DefaultUiCamera, Node, Style, TargetCamera, UiRect, Val};
+use bevy_ui::{ComputedNode, DefaultUiCamera, Node, TargetCamera, UiRect, Val};
 use tiny_bail::prelude::*;
 
 use crate::{
@@ -102,19 +102,19 @@ fn place_tooltip(
     mut commands: Commands,
     ctx: Res<TooltipContext>,
     primary: Res<PrimaryTooltip>,
-    target_query: Query<(&GlobalTransform, &Node)>,
+    target_query: Query<(&GlobalTransform, &ComputedNode)>,
     target_camera_query: Query<&TargetCamera>,
     default_ui_camera: DefaultUiCamera,
     camera_query: Query<&Camera>,
-    mut tooltip_query: Query<(&mut Style, &mut Transform, &GlobalTransform, &Node)>,
+    mut tooltip_query: Query<(&mut Node, &mut Transform, &GlobalTransform, &ComputedNode)>,
 ) {
     rq!(matches!(ctx.state, TooltipState::Active));
-    let (target_gt, target_node) = rq!(target_query.get(ctx.target));
+    let (target_gt, target_computed) = rq!(target_query.get(ctx.target));
     let entity = match &ctx.tooltip.content {
         TooltipContent::Primary(_) => primary.container,
         &TooltipContent::Custom(id) => id,
     };
-    let (mut style, mut transform, gt, node) = r!(tooltip_query.get_mut(entity));
+    let (mut node, mut transform, gt, computed) = r!(tooltip_query.get_mut(entity));
 
     // Identify the target camera and viewport rect.
     let camera_entity = r!(target_camera_query
@@ -131,14 +131,15 @@ fn place_tooltip(
 
     // Calculate target position.
     let mut pos = if let Some(target_anchor) = placement.target_anchor {
-        let target_rect = target_node.logical_rect(target_gt);
+        let target_rect =
+            Rect::from_center_size(target_gt.translation().truncate(), target_computed.size());
         target_rect.center() - target_rect.size() * target_anchor.as_vec() * Vec2::new(-1.0, 1.0)
     } else {
         ctx.cursor_pos
     };
 
     // Apply tooltip anchor to target position.
-    let tooltip_rect = node.logical_rect(gt);
+    let tooltip_rect = Rect::from_center_size(gt.translation().truncate(), computed.size());
     let tooltip_anchor =
         tooltip_rect.size() * placement.tooltip_anchor.as_vec() * Vec2::new(-1.0, 1.0);
     pos += tooltip_anchor;
@@ -181,14 +182,14 @@ fn place_tooltip(
     }
     pos = pos.clamp(Vec2::new(left, top), Vec2::new(right, bottom));
 
-    // Set position via `Style`.
+    // Set position via `Node`.
     let top_left = pos - tooltip_rect.half_size();
-    style.top = Val::Px(top_left.y);
-    style.left = Val::Px(top_left.x);
+    node.top = Val::Px(top_left.y);
+    node.left = Val::Px(top_left.x);
 
     // Set position via `Transform`.
     // This system has to run after `UiSystem::Layout` so that its size is calculated
-    // from the updated text. However, that means that `Style` positioning will be
+    // from the updated text. However, that means that `Node` positioning will be
     // delayed by 1 frame. As a workaround, update the `Transform` directly as well.
     pos = round_layout_coords(pos);
     transform.translation.x = pos.x;
