@@ -14,7 +14,7 @@ fn main() {
 }
 
 fn spawn_scene(mut commands: Commands) {
-    commands.spawn(Camera2d::default());
+    commands.spawn(Camera2d);
     commands
         .spawn(Node {
             display: Display::Grid,
