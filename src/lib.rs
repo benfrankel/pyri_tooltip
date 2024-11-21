@@ -254,7 +254,7 @@ impl Tooltip {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub enum TooltipContent {
-    /// Display the primary tooltip with custom [`Text`].
+    /// Display the primary tooltip with custom [`RichText`].
     Primary(RichText),
     /// Display a fully custom entity as the tooltip.
     Custom(Entity),
