@@ -21,6 +21,7 @@ use tiny_bail::prelude::*;
 use crate::{rich_text::RichText, PrimaryTooltip, Tooltip, TooltipContent, TooltipSet};
 
 pub(super) fn plugin(app: &mut App) {
+    #[cfg(feature = "bevy_reflect")]
     app.register_type::<TooltipContext>();
     app.init_resource::<TooltipContext>();
     app.add_event::<HideTooltip>();

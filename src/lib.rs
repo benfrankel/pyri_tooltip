@@ -91,10 +91,12 @@ pub struct TooltipPlugin {
 
 impl Plugin for TooltipPlugin {
     fn build(&self, app: &mut bevy_app::App) {
+        #[cfg(feature = "bevy_reflect")]
         app.register_type::<PrimaryTooltip>();
         let primary_tooltip = PrimaryTooltip::new(app.world_mut(), self.container, self.text);
         app.insert_resource(primary_tooltip);
 
+        #[cfg(feature = "bevy_reflect")]
         app.register_type::<Tooltip>();
 
         app.configure_sets(PreUpdate, (UiSystem::Focus, TooltipSet::Content).chain());
