@@ -25,38 +25,65 @@ fn sync_rich_text_spans(
     text_span_query: Query<(), With<TextSpan>>,
 ) {
     for (entity, children, rich_text) in &rich_text_query {
-        // Despawn old `TextSpan` children.
+        // Update root text entity.
+        commands.entity(entity).insert((
+            Text::default(),
+            TextLayout::new(rich_text.justify, rich_text.linebreak_behavior),
+        ));
+
+        // Update text span child entities.
+        let mut section_idx = 0;
         for &child in children.into_iter().flatten() {
-            if text_span_query.contains(child) {
-                commands.entity(child).despawn_recursive();
+            // Skip children that aren't text spans.
+            if !text_span_query.contains(child) {
+                continue;
             }
+
+            // Despawn text spans when there are no sections left to write.
+            if section_idx == rich_text.sections.len() {
+                commands.entity(child).despawn_recursive();
+                continue;
+            }
+
+            // Update text spans when there are still sections left to write.
+            let section = &rich_text.sections[section_idx];
+            commands.entity(child).insert((
+                TextSpan(section.value.clone()),
+                TextColor(section.style.color),
+                TextFont {
+                    font: section.style.font.clone(),
+                    font_size: section.style.font_size,
+                    font_smoothing: FontSmoothing::AntiAliased,
+                },
+            ));
+            section_idx += 1;
         }
 
-        commands
-            .entity(entity)
-            .insert((
-                Text::default(),
-                TextLayout::new(rich_text.justify, rich_text.linebreak_behavior),
-            ))
-            .with_children(|parent| {
-                // Spawn new `TextSpan` children.
-                for section in &rich_text.sections {
-                    parent.spawn((
-                        TextSpan(section.value.clone()),
-                        TextColor(section.style.color),
-                        TextFont {
-                            font: section.style.font.clone(),
-                            font_size: section.style.font_size,
-                            font_smoothing: FontSmoothing::AntiAliased,
-                        },
-                    ));
-                }
-            });
+        // If all sections are written, we're done.
+        if section_idx == rich_text.sections.len() {
+            continue;
+        }
+
+        // Otherwise, spawn new text spans for the remaining sections.
+        commands.entity(entity).with_children(|parent| {
+            for section in &rich_text.sections[section_idx..] {
+                parent.spawn((
+                    TextSpan(section.value.clone()),
+                    TextColor(section.style.color),
+                    TextFont {
+                        font: section.style.font.clone(),
+                        font_size: section.style.font_size,
+                        font_smoothing: FontSmoothing::AntiAliased,
+                    },
+                ));
+            }
+        });
     }
 }
 
 /// A rich text string in the shape of Bevy 0.14's `Text` component.
 #[derive(Component, Clone, Default, Debug)]
+#[require(Text)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub struct RichText {
     pub sections: Vec<TextSection>,

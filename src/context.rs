@@ -188,7 +188,9 @@ fn update_tooltip_context(
     // Update tooltip if it was activated, dismissed, or changed targets.
     let new_active = matches!(ctx.state, TooltipState::Active);
     if old_active != new_active || old_target != ctx.target {
-        hide_tooltip.send(HideTooltip { entity: old_entity });
+        if old_active {
+            hide_tooltip.send(HideTooltip { entity: old_entity });
+        }
         if new_active {
             show_tooltip.send(ShowTooltip);
         }

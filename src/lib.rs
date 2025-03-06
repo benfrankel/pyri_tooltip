@@ -103,7 +103,7 @@ impl Plugin for TooltipPlugin {
         app.configure_sets(
             PostUpdate,
             (
-                UiSystem::Layout,
+                UiSystem::PostLayout,
                 TooltipSet::Placement,
                 TransformSystem::TransformPropagate,
             )
