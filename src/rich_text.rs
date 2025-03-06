@@ -7,17 +7,23 @@ use bevy_ecs::{
     component::Component,
     entity::Entity,
     query::{Changed, With},
+    schedule::{IntoSystemConfigs as _, IntoSystemSetConfigs as _, SystemSet},
     system::{Commands, Query},
 };
 use bevy_hierarchy::{BuildChildren as _, ChildBuild as _, Children, DespawnRecursiveExt as _};
 use bevy_text::{
     Font, FontSmoothing, JustifyText, LineBreak, TextColor, TextFont, TextLayout, TextSpan,
 };
-use bevy_ui::widget::Text;
+use bevy_ui::{UiSystem, widget::Text};
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(PostUpdate, sync_rich_text_spans);
+    app.configure_sets(PostUpdate, RichTextSystems.before(UiSystem::Prepare));
+    app.add_systems(PostUpdate, sync_rich_text_spans.in_set(RichTextSystems));
 }
+
+/// A system set for the systems that update rich text entities in `PostUpdate`.
+#[derive(SystemSet, Eq, PartialEq, Hash, Clone, Debug)]
+pub struct RichTextSystems;
 
 fn sync_rich_text_spans(
     mut commands: Commands,

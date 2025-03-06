@@ -71,7 +71,7 @@ use bevy_ui::{
 };
 
 pub use placement::TooltipPlacement;
-pub use rich_text::{RichText, TextSection, TextStyle};
+pub use rich_text::{RichText, RichTextSystems, TextSection, TextStyle};
 
 /// A [`Plugin`] that sets up the tooltip widget system.
 pub struct TooltipPlugin {
