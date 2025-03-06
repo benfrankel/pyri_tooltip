@@ -11,8 +11,8 @@ use bevy_ui::{ComputedNode, DefaultUiCamera, Node, TargetCamera, UiRect, Val};
 use tiny_bail::prelude::*;
 
 use crate::{
-    context::{TooltipContext, TooltipState},
     PrimaryTooltip, TooltipContent, TooltipSet,
+    context::{TooltipContext, TooltipState},
 };
 
 pub(super) fn plugin(app: &mut App) {
