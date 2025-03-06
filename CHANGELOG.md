@@ -1,6 +1,8 @@
-# Version 0.3.0
+# Version 0.2.1
 
 - Added `RichTextSystems` system set
+- Fixed some system ordering issues
+- Fixed errors with `bevy_reflect` feature disabled
 
 # Version 0.2.0
 
