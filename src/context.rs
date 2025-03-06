@@ -5,7 +5,7 @@ use bevy_ecs::{
     entity::Entity,
     event::{Event, EventReader, EventWriter},
     query::With,
-    schedule::{common_conditions::on_event, IntoSystemConfigs as _},
+    schedule::{IntoSystemConfigs as _, common_conditions::on_event},
     system::{Query, Res, ResMut, Resource},
 };
 use bevy_math::Vec2;
@@ -18,7 +18,7 @@ use bevy_ui::{Interaction, UiStack};
 use bevy_window::{PrimaryWindow, Window, WindowRef};
 use tiny_bail::prelude::*;
 
-use crate::{rich_text::RichText, PrimaryTooltip, Tooltip, TooltipContent, TooltipSet};
+use crate::{PrimaryTooltip, Tooltip, TooltipContent, TooltipSet, rich_text::RichText};
 
 pub(super) fn plugin(app: &mut App) {
     #[cfg(feature = "bevy_reflect")]
@@ -234,14 +234,14 @@ fn show_tooltip(
     mut text_query: Query<&mut RichText>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
-    let entity = match &mut ctx.tooltip.content {
+    let entity = match ctx.tooltip.content {
         TooltipContent::Primary(ref mut text) => {
             if let Ok(mut primary_text) = text_query.get_mut(primary.text) {
                 *primary_text = std::mem::take(text);
             }
             primary.container
         }
-        TooltipContent::Custom(id) => *id,
+        TooltipContent::Custom(id) => id,
     };
     *r!(visibility_query.get_mut(entity)) = Visibility::Visible;
 }

@@ -43,9 +43,9 @@ mod rich_text;
 /// ```
 pub mod prelude {
     pub use super::{
-        rich_text::{RichText, TextSection, TextStyle},
         PrimaryTooltip, Tooltip, TooltipActivation, TooltipContent, TooltipPlacement,
         TooltipPlugin, TooltipSet, TooltipTransfer,
+        rich_text::{RichText, TextSection, TextStyle},
     };
 }
 
