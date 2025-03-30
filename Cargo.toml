@@ -18,7 +18,7 @@ bevy_asset = { version = "0.16.0-rc.1", default-features = false }
 bevy_color = { version = "0.16.0-rc.1", default-features = false }
 bevy_ecs = { version = "0.16.0-rc.1", default-features = false }
 bevy_math = { version = "0.16.0-rc.1", default-features = false }
-bevy_reflect = { version = "0.16.0-rc.1", optional = true, default-features = false }
+bevy_reflect = { version = "0.16.0-rc.1", default-features = false, optional = true }
 bevy_render = { version = "0.16.0-rc.1", default-features = false }
 bevy_sprite = { version = "0.16.0-rc.1", default-features = false }
 bevy_text = { version = "0.16.0-rc.1", default-features = false }
