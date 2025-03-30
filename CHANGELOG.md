@@ -1,3 +1,9 @@
+# Next version
+
+# Version 0.3.0
+
+- **Updated to Bevy 0.16**
+
 # Version 0.2.1
 
 - Added `RichTextSystems` system set
