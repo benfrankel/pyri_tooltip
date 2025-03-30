@@ -6,14 +6,12 @@ use bevy_color::Color;
 use bevy_ecs::{
     component::Component,
     entity::Entity,
+    hierarchy::Children,
     query::{Changed, With},
-    schedule::{IntoSystemConfigs as _, IntoSystemSetConfigs as _, SystemSet},
+    schedule::{IntoScheduleConfigs as _, SystemSet},
     system::{Commands, Query},
 };
-use bevy_hierarchy::{BuildChildren as _, ChildBuild as _, Children, DespawnRecursiveExt as _};
-use bevy_text::{
-    Font, FontSmoothing, JustifyText, LineBreak, TextColor, TextFont, TextLayout, TextSpan,
-};
+use bevy_text::{Font, JustifyText, LineBreak, TextColor, TextFont, TextLayout, TextSpan};
 use bevy_ui::{UiSystem, widget::Text};
 
 pub(super) fn plugin(app: &mut App) {
@@ -47,7 +45,7 @@ fn sync_rich_text_spans(
 
             // Despawn text spans when there are no sections left to write.
             if section_idx == rich_text.sections.len() {
-                commands.entity(child).despawn_recursive();
+                commands.entity(child).despawn();
                 continue;
             }
 
@@ -59,7 +57,7 @@ fn sync_rich_text_spans(
                 TextFont {
                     font: section.style.font.clone(),
                     font_size: section.style.font_size,
-                    font_smoothing: FontSmoothing::AntiAliased,
+                    ..Default::default()
                 },
             ));
             section_idx += 1;
@@ -79,7 +77,7 @@ fn sync_rich_text_spans(
                     TextFont {
                         font: section.style.font.clone(),
                         font_size: section.style.font_size,
-                        font_smoothing: FontSmoothing::AntiAliased,
+                        ..Default::default()
                     },
                 ));
             }

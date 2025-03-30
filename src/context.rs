@@ -5,8 +5,9 @@ use bevy_ecs::{
     entity::Entity,
     event::{Event, EventReader, EventWriter},
     query::With,
-    schedule::{IntoSystemConfigs as _, common_conditions::on_event},
-    system::{Query, Res, ResMut, Resource},
+    resource::Resource,
+    schedule::{IntoScheduleConfigs as _, common_conditions::on_event},
+    system::{Query, Res, ResMut},
 };
 use bevy_math::Vec2;
 use bevy_render::{
@@ -96,7 +97,7 @@ fn update_tooltip_context(
             continue;
         };
         let window = match window {
-            WindowRef::Primary => cq!(primary_window_query.get_single()),
+            WindowRef::Primary => cq!(primary_window_query.single()),
             WindowRef::Entity(id) => id,
         };
         let window = c!(window_query.get(window));
@@ -189,10 +190,10 @@ fn update_tooltip_context(
     let new_active = matches!(ctx.state, TooltipState::Active);
     if old_active != new_active || old_target != ctx.target {
         if old_active {
-            hide_tooltip.send(HideTooltip { entity: old_entity });
+            hide_tooltip.write(HideTooltip { entity: old_entity });
         }
         if new_active {
-            show_tooltip.send(ShowTooltip);
+            show_tooltip.write(ShowTooltip);
         }
     }
 }

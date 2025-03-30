@@ -51,17 +51,17 @@ pub mod prelude {
 
 use bevy_app::{Plugin, PostUpdate, PreUpdate};
 use bevy_color::Color;
-use bevy_core::Name;
 #[cfg(feature = "bevy_reflect")]
 use bevy_ecs::reflect::{ReflectComponent, ReflectResource};
 use bevy_ecs::{
     component::Component,
     entity::Entity,
-    schedule::{IntoSystemSetConfigs as _, SystemSet},
-    system::Resource,
+    hierarchy::ChildOf,
+    name::Name,
+    resource::Resource,
+    schedule::{IntoScheduleConfigs as _, SystemSet},
     world::World,
 };
-use bevy_hierarchy::BuildChildren as _;
 use bevy_render::view::Visibility;
 use bevy_sprite::Anchor;
 use bevy_text::JustifyText;
@@ -162,8 +162,12 @@ impl PrimaryTooltip {
             text
         } else {
             world
-                .spawn((Name::new("Text"), Node::default(), RichText::default()))
-                .set_parent(container)
+                .spawn((
+                    Name::new("Text"),
+                    Node::default(),
+                    RichText::default(),
+                    ChildOf { parent: container },
+                ))
                 .id()
         };
 

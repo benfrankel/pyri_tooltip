@@ -1,13 +1,13 @@
 use bevy_app::{App, PostUpdate};
 use bevy_ecs::{
-    schedule::IntoSystemConfigs as _,
+    schedule::IntoScheduleConfigs as _,
     system::{Commands, Query, Res},
 };
 use bevy_math::{Rect, Vec2};
 use bevy_render::camera::Camera;
 use bevy_sprite::Anchor;
 use bevy_transform::components::{GlobalTransform, Transform};
-use bevy_ui::{ComputedNode, DefaultUiCamera, Node, TargetCamera, UiRect, Val};
+use bevy_ui::{ComputedNode, DefaultUiCamera, Node, UiRect, UiTargetCamera, Val};
 use tiny_bail::prelude::*;
 
 use crate::{
@@ -103,7 +103,7 @@ fn place_tooltip(
     ctx: Res<TooltipContext>,
     primary: Res<PrimaryTooltip>,
     target_query: Query<(&GlobalTransform, &ComputedNode)>,
-    target_camera_query: Query<&TargetCamera>,
+    target_camera_query: Query<&UiTargetCamera>,
     default_ui_camera: DefaultUiCamera,
     camera_query: Query<&Camera>,
     mut tooltip_query: Query<(&mut Node, &mut Transform, &GlobalTransform, &ComputedNode)>,
@@ -119,13 +119,15 @@ fn place_tooltip(
     // Identify the target camera and viewport rect.
     let camera_entity = r!(target_camera_query
         .get(ctx.target)
-        .map(TargetCamera::entity)
+        .map(UiTargetCamera::entity)
         .ok()
         .or(default_ui_camera.get()));
     let camera = r!(camera_query.get(camera_entity));
     let viewport = r!(camera.logical_viewport_rect());
-    // Insert instead of mutate because the tooltip entity might not spawn with a `TargetCamera` component.
-    commands.entity(entity).insert(TargetCamera(camera_entity));
+    // Insert instead of mutate because the tooltip entity might not spawn with a `UiTargetCamera` component.
+    commands
+        .entity(entity)
+        .insert(UiTargetCamera(camera_entity));
 
     let placement = &ctx.tooltip.placement;
 
