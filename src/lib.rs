@@ -11,17 +11,21 @@
 //! Add [`TooltipPlugin`] to set up the tooltip system:
 //!
 //! ```
-//! # /*
+//! # use bevy::prelude::*;
+//! # use pyri_tooltip::prelude::*;
+//! # fn plugin(app: &mut App) {
 //! app.add_plugins(TooltipPlugin::default());
-//! # */
+//! # }
 //! ```
 //!
 //! Spawn a UI node with the [`Tooltip`] component:
 //!
 //! ```
-//! # /*
+//! # use bevy::prelude::*;
+//! # use pyri_tooltip::prelude::*;
+//! # fn system(mut commands: Commands) {
 //! commands.spawn(Tooltip::cursor("Hello, world!"));
-//! # */
+//! # }
 //! ```
 //!
 //! # Advanced
