@@ -240,7 +240,7 @@ fn show_tooltip(
     let entity = match ctx.tooltip.content {
         TooltipContent::Primary(ref mut text) => {
             if let Ok(mut primary_text) = text_query.get_mut(primary.text) {
-                *primary_text = std::mem::take(text);
+                *primary_text = core::mem::take(text);
             }
             primary.container
         }

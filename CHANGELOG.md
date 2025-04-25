@@ -3,6 +3,7 @@
 # Version 0.3.0
 
 - **Updated to Bevy 0.16**
+- **Added `no_std` support**
 
 # Version 0.2.1
 

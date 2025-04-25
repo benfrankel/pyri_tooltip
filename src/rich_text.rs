@@ -1,5 +1,7 @@
 #![allow(missing_docs)]
 
+use alloc::{string::String, vec, vec::Vec};
+
 use bevy_app::{App, PostUpdate};
 use bevy_asset::Handle;
 use bevy_color::Color;

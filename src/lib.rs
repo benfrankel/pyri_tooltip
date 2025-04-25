@@ -30,6 +30,10 @@
 //!
 //! To replace the default primary tooltip, see [`TooltipPlugin`] and [`PrimaryTooltip`].
 
+#![no_std]
+
+extern crate alloc;
+
 mod context;
 mod placement;
 mod rich_text;
@@ -48,6 +52,11 @@ pub mod prelude {
         rich_text::{RichText, TextSection, TextStyle},
     };
 }
+
+use alloc::{
+    string::{String, ToString as _},
+    vec::Vec,
+};
 
 use bevy_app::{Plugin, PostUpdate, PreUpdate};
 use bevy_color::Color;
