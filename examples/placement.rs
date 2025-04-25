@@ -15,8 +15,8 @@ fn main() {
 
 fn spawn_scene(mut commands: Commands) {
     commands.spawn(Camera2d);
-    commands
-        .spawn(Node {
+    commands.spawn((
+        Node {
             display: Display::Grid,
             align_self: AlignSelf::Center,
             justify_self: JustifySelf::Center,
@@ -24,41 +24,44 @@ fn spawn_scene(mut commands: Commands) {
             column_gap: Px(8.0),
             grid_template_columns: RepeatedGridTrack::auto(3),
             ..default()
-        })
-        .with_children(|parent| {
-            let tile = (
-                Node {
-                    width: Px(64.0),
-                    height: Px(64.0),
-                    border: UiRect::all(Px(4.0)),
-                    ..default()
-                },
-                BackgroundColor(Color::WHITE),
-                BorderColor(Color::BLACK),
-                BorderRadius::all(Px(8.0)),
-            );
-
+        },
+        children![
             // Demonstrate fixed placement.
-            for anchor in [
-                Anchor::TopLeft,
-                Anchor::TopCenter,
-                Anchor::TopRight,
-                Anchor::CenterLeft,
-                Anchor::Center,
-                Anchor::CenterRight,
-                Anchor::BottomLeft,
-                Anchor::BottomCenter,
-                Anchor::BottomRight,
-            ] {
-                parent.spawn((
-                    tile.clone(),
-                    Tooltip::fixed(anchor, format!("Tooltip::fixed({:?}, text)", anchor)),
-                ));
-            }
-
+            tile_fixed(Anchor::TopLeft),
+            tile_fixed(Anchor::TopCenter),
+            tile_fixed(Anchor::TopRight),
+            tile_fixed(Anchor::CenterLeft),
+            tile_fixed(Anchor::Center),
+            tile_fixed(Anchor::CenterRight),
+            tile_fixed(Anchor::BottomLeft),
+            tile_fixed(Anchor::BottomCenter),
+            tile_fixed(Anchor::BottomRight),
             // Demonstrate cursor placement.
-            parent.spawn((tile.clone(), Tooltip::cursor("Tooltip::cursor(text)")));
-        });
+            tile(Tooltip::cursor("Tooltip::cursor(text)"))
+        ],
+    ));
+}
+
+fn tile_fixed(anchor: Anchor) -> impl Bundle {
+    tile(Tooltip::fixed(
+        anchor,
+        format!("Tooltip::fixed({:?}, text)", anchor),
+    ))
+}
+
+fn tile(tooltip: Tooltip) -> impl Bundle {
+    (
+        Node {
+            width: Px(64.0),
+            height: Px(64.0),
+            border: UiRect::all(Px(4.0)),
+            ..default()
+        },
+        BackgroundColor(Color::WHITE),
+        BorderColor(Color::BLACK),
+        BorderRadius::all(Px(8.0)),
+        tooltip,
+    )
 }
 
 fn highlight_hovered_tile(mut tile_query: Query<(&Interaction, &mut BackgroundColor)>) {
