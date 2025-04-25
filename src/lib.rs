@@ -166,7 +166,7 @@ impl PrimaryTooltip {
                     Name::new("Text"),
                     Node::default(),
                     RichText::default(),
-                    ChildOf { parent: container },
+                    ChildOf(container),
                 ))
                 .id()
         };
