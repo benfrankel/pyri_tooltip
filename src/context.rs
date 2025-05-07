@@ -214,6 +214,7 @@ pub(crate) enum TooltipState {
 
 /// A buffered event sent when a tooltip should be hidden.
 #[derive(Event)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 struct HideTooltip {
     entity: Entity,
 }
@@ -229,6 +230,7 @@ fn hide_tooltip(
 
 /// A buffered event sent when a tooltip should be shown.
 #[derive(Event)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 struct ShowTooltip;
 
 fn show_tooltip(
