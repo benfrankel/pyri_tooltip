@@ -35,6 +35,8 @@
 //! To replace the default primary tooltip, see [`TooltipPlugin`] and [`PrimaryTooltip`].
 
 #![no_std]
+// Support configuring Bevy lints within code.
+#![cfg_attr(bevy_lint, feature(register_tool), register_tool(bevy))]
 
 extern crate alloc;
 
@@ -52,7 +54,7 @@ mod rich_text;
 pub mod prelude {
     pub use super::{
         PrimaryTooltip, Tooltip, TooltipActivation, TooltipContent, TooltipPlacement,
-        TooltipPlugin, TooltipSet, TooltipTransfer,
+        TooltipPlugin, TooltipSystems, TooltipTransfer,
         rich_text::{RichText, TextSection, TextStyle},
     };
 }
@@ -112,12 +114,15 @@ impl Plugin for TooltipPlugin {
         #[cfg(feature = "bevy_reflect")]
         app.register_type::<Tooltip>();
 
-        app.configure_sets(PreUpdate, (UiSystem::Focus, TooltipSet::Content).chain());
+        app.configure_sets(
+            PreUpdate,
+            (UiSystem::Focus, TooltipSystems::Content).chain(),
+        );
         app.configure_sets(
             PostUpdate,
             (
                 UiSystem::PostLayout,
-                TooltipSet::Placement,
+                TooltipSystems::Placement,
                 TransformSystem::TransformPropagate,
             )
                 .chain(),
@@ -476,7 +481,7 @@ impl Default for TooltipTransfer {
 
 /// A [`SystemSet`] for tooltip systems.
 #[derive(SystemSet, Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub enum TooltipSet {
+pub enum TooltipSystems {
     /// Update and show / hide the tooltip content (runs in [`PreUpdate`]).
     Content,
     /// Position the tooltip using its calculated size (runs in [`PostUpdate`]).

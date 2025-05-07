@@ -5,6 +5,8 @@ use alloc::{string::String, vec, vec::Vec};
 use bevy_app::{App, PostUpdate};
 use bevy_asset::Handle;
 use bevy_color::Color;
+#[cfg(feature = "bevy_reflect")]
+use bevy_ecs::reflect::ReflectComponent;
 use bevy_ecs::{
     component::Component,
     entity::Entity,
@@ -21,7 +23,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(PostUpdate, sync_rich_text_spans.in_set(RichTextSystems));
 }
 
-/// A system set for the systems that update rich text entities in `PostUpdate`.
+/// A [`SystemSet`] for the systems that update rich text entities in [`PostUpdate`].
 #[derive(SystemSet, Eq, PartialEq, Hash, Clone, Debug)]
 pub struct RichTextSystems;
 
@@ -90,7 +92,11 @@ fn sync_rich_text_spans(
 /// A rich text string in the shape of Bevy 0.14's `Text` component.
 #[derive(Component, Clone, Default, Debug)]
 #[require(Text)]
-#[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
+#[cfg_attr(
+    feature = "bevy_reflect",
+    derive(bevy_reflect::Reflect),
+    reflect(Component)
+)]
 pub struct RichText {
     pub sections: Vec<TextSection>,
     pub justify: JustifyText,

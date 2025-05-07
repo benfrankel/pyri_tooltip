@@ -11,12 +11,12 @@ use bevy_ui::{ComputedNode, DefaultUiCamera, Node, UiRect, UiTargetCamera, Val};
 use tiny_bail::prelude::*;
 
 use crate::{
-    PrimaryTooltip, TooltipContent, TooltipSet,
+    PrimaryTooltip, TooltipContent, TooltipSystems,
     context::{TooltipContext, TooltipState},
 };
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(PostUpdate, place_tooltip.in_set(TooltipSet::Placement));
+    app.add_systems(PostUpdate, place_tooltip.in_set(TooltipSystems::Placement));
 }
 
 /// The tooltip placement configuration.

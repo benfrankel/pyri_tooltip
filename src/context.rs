@@ -19,7 +19,7 @@ use bevy_ui::{Interaction, UiStack};
 use bevy_window::{PrimaryWindow, Window, WindowRef};
 use tiny_bail::prelude::*;
 
-use crate::{PrimaryTooltip, Tooltip, TooltipContent, TooltipSet, rich_text::RichText};
+use crate::{PrimaryTooltip, Tooltip, TooltipContent, TooltipSystems, rich_text::RichText};
 
 pub(super) fn plugin(app: &mut App) {
     #[cfg(feature = "bevy_reflect")]
@@ -35,7 +35,7 @@ pub(super) fn plugin(app: &mut App) {
             show_tooltip.run_if(on_event::<ShowTooltip>),
         )
             .chain()
-            .in_set(TooltipSet::Content),
+            .in_set(TooltipSystems::Content),
     );
 }
 

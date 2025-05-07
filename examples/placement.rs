@@ -5,12 +5,12 @@ use bevy::sprite::Anchor;
 use bevy::ui::Val::*;
 use pyri_tooltip::prelude::*;
 
-fn main() {
-    let mut app = App::new();
-    app.add_plugins((DefaultPlugins, TooltipPlugin::default()));
-    app.add_systems(Startup, spawn_scene);
-    app.add_systems(Update, highlight_hovered_tile);
-    app.run();
+fn main() -> AppExit {
+    App::new()
+        .add_plugins((DefaultPlugins, TooltipPlugin::default()))
+        .add_systems(Startup, spawn_scene)
+        .add_systems(Update, highlight_hovered_tile)
+        .run()
 }
 
 fn spawn_scene(mut commands: Commands) {

@@ -4,6 +4,7 @@
 
 - **Updated to Bevy 0.16**
 - **Added `no_std` support**
+- Renamed `TooltipSet` -> `TooltipSystems` system set
 
 # Version 0.2.1
 
