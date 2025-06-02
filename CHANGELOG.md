@@ -1,5 +1,9 @@
 # Next version
 
+# Version 0.3.2
+
+- Fixed position rounding edge cases
+
 # Version 0.3.1
 
 - Improved rounding for odd-width tooltip positions

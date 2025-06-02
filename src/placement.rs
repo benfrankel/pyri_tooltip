@@ -184,9 +184,16 @@ fn place_tooltip(
     }
     pos = pos.clamp(Vec2::new(left, top), Vec2::new(right, bottom));
 
-    // Apply UI rounding if tooltip width is even.
+    // Apply transform rounding depending on size parity.
     if tooltip_rect.width().round() % 2.0 < f32::EPSILON {
-        pos = round_layout_coords(pos);
+        pos.x = round_ties_up(pos.x);
+    } else {
+        pos.x = round_ties_up(pos.x + 0.5) - 0.5;
+    }
+    if tooltip_rect.height().round() % 2.0 < f32::EPSILON {
+        pos.y = round_ties_up(pos.y);
+    } else {
+        pos.y = round_ties_up(pos.y + 0.5) - 0.5;
     }
 
     // Set position via `Node`.
@@ -208,13 +215,5 @@ fn round_ties_up(value: f32) -> f32 {
         value.round()
     } else {
         value.ceil()
-    }
-}
-
-/// Taken from `bevy_ui`, used in `ui_layout_system`.
-fn round_layout_coords(value: Vec2) -> Vec2 {
-    Vec2 {
-        x: round_ties_up(value.x),
-        y: round_ties_up(value.y),
     }
 }
