@@ -1,5 +1,9 @@
 # Next version
 
+# Version 0.3.1
+
+- Improved rounding for odd-width tooltip positions
+
 # Version 0.3.0
 
 - **Updated to Bevy 0.16**

@@ -184,6 +184,11 @@ fn place_tooltip(
     }
     pos = pos.clamp(Vec2::new(left, top), Vec2::new(right, bottom));
 
+    // Apply UI rounding if tooltip width is even.
+    if tooltip_rect.width().round() % 2.0 < f32::EPSILON {
+        pos = round_layout_coords(pos);
+    }
+
     // Set position via `Node`.
     let top_left = pos - tooltip_rect.half_size();
     node.top = Val::Px(top_left.y);
@@ -193,7 +198,6 @@ fn place_tooltip(
     // This system has to run after `UiSystem::Layout` so that its size is calculated
     // from the updated text. However, that means that `Node` positioning will be
     // delayed by 1 frame. As a workaround, update the `Transform` directly as well.
-    pos = round_layout_coords(pos);
     transform.translation.x = pos.x;
     transform.translation.y = pos.y;
 }
