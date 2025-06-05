@@ -1,5 +1,9 @@
 # Next version
 
+# Version 0.4.1
+
+- Fixed tooltip placement for non-unit DPI
+
 # Version 0.4.0
 
 - Renamed `PrimaryTooltip` -> `TooltipSettings` resource

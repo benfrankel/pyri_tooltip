@@ -123,7 +123,7 @@ fn place_tooltip(
         .ok()
         .or(default_ui_camera.get()));
     let camera = r!(camera_query.get(camera_entity));
-    let viewport = r!(camera.logical_viewport_rect());
+    let viewport = r!(camera.physical_viewport_rect());
     // Insert instead of mutate because the tooltip entity might not spawn with a `UiTargetCamera` component.
     commands
         .entity(entity)
@@ -147,7 +147,7 @@ fn place_tooltip(
     pos += tooltip_anchor;
 
     // Resolve offset `Val`s.
-    let size = viewport.size();
+    let size = viewport.size().as_vec2();
     let offset_x = placement.offset_x.resolve(size.x, size).unwrap_or_default();
     let offset_y = placement.offset_y.resolve(size.y, size).unwrap_or_default();
 
@@ -184,7 +184,7 @@ fn place_tooltip(
     }
     pos = pos.clamp(Vec2::new(left, top), Vec2::new(right, bottom));
 
-    // Apply transform rounding depending on size parity.
+    // Apply rounding depending on parity of size.
     if tooltip_rect.width().round() % 2.0 < f32::EPSILON {
         pos.x = round_ties_up(pos.x);
     } else {
