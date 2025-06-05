@@ -11,7 +11,7 @@ use bevy_ui::{ComputedNode, DefaultUiCamera, Node, UiRect, UiTargetCamera, Val};
 use tiny_bail::prelude::*;
 
 use crate::{
-    TooltipSettings, TooltipContent, TooltipSystems,
+    TooltipContent, TooltipSettings, TooltipSystems,
     context::{TooltipContext, TooltipState},
 };
 
