@@ -32,7 +32,7 @@
 //!
 //! To customize the behavior and appearance of a tooltip, see [`Tooltip`].
 //!
-//! To replace the default primary tooltip, see [`TooltipPlugin`] and [`PrimaryTooltip`].
+//! To replace the default primary tooltip, see [`TooltipPlugin`] and [`TooltipSettings`].
 
 #![no_std]
 // Support configuring Bevy lints within code.
@@ -53,8 +53,8 @@ mod rich_text;
 /// ```
 pub mod prelude {
     pub use super::{
-        PrimaryTooltip, Tooltip, TooltipActivation, TooltipContent, TooltipPlacement,
-        TooltipPlugin, TooltipSystems, TooltipTransfer,
+        Tooltip, TooltipActivation, TooltipContent, TooltipPlacement, TooltipPlugin,
+        TooltipSettings, TooltipSystems, TooltipTransfer,
         rich_text::{RichText, TextSection, TextStyle},
     };
 }
@@ -71,10 +71,13 @@ use bevy_ecs::reflect::{ReflectComponent, ReflectResource};
 use bevy_ecs::{
     component::Component,
     entity::Entity,
-    hierarchy::ChildOf,
+    entity_disabling::Disabled,
+    hierarchy::{ChildOf, Children},
     name::Name,
+    query::With,
     resource::Resource,
-    schedule::{IntoScheduleConfigs as _, SystemSet},
+    schedule::{IntoScheduleConfigs as _, SystemSet, common_conditions::resource_changed},
+    system::{Commands, Query, Res},
     world::World,
 };
 use bevy_render::view::Visibility;
@@ -89,43 +92,58 @@ pub use placement::TooltipPlacement;
 pub use rich_text::{RichText, RichTextSystems, TextSection, TextStyle};
 
 /// A [`Plugin`] that sets up the tooltip widget system.
+///
+/// Use the [`TooltipSettings`] resource to make changes while the app is already running.
 pub struct TooltipPlugin {
-    /// Set a custom entity for [`PrimaryTooltip::container`], or spawn the default container
+    /// Set a custom entity for [`TooltipSettings::container`], or spawn the default container
     /// entity if `None`.
     ///
     /// This entity should include all of the required components of [`Node`], with
     /// [`Visibility::Hidden`] and [`Node::position_type`] set to [`PositionType::Absolute`].
     pub container: Entity,
-    /// Set a custom entity for [`PrimaryTooltip::text`], or spawn the default text entity if
+    /// Set a custom entity for [`TooltipSettings::text`], or spawn the default text entity if
     /// `None`.
     ///
     /// This entity should include all of the required components of [`Node`], along with a
     /// [`RichText`] component, and be a child of [`Self::container`].
     pub text: Entity,
+    /// Whether or not the tooltip system should initially be enabled.
+    pub enabled: bool,
 }
 
 impl Plugin for TooltipPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         #[cfg(feature = "bevy_reflect")]
-        app.register_type::<PrimaryTooltip>();
-        let primary_tooltip = PrimaryTooltip::new(app.world_mut(), self.container, self.text);
-        app.insert_resource(primary_tooltip);
+        app.register_type::<TooltipSettings>();
+        let settings =
+            TooltipSettings::new(app.world_mut(), self.container, self.text, self.enabled);
+        app.insert_resource(settings);
 
         #[cfg(feature = "bevy_reflect")]
         app.register_type::<Tooltip>();
 
         app.configure_sets(
             PreUpdate,
-            (UiSystem::Focus, TooltipSystems::Content).chain(),
+            (
+                UiSystem::Focus,
+                TooltipSystems::Content.run_if(tooltips_enabled),
+            )
+                .chain(),
         );
         app.configure_sets(
             PostUpdate,
             (
                 UiSystem::PostLayout,
-                TooltipSystems::Placement,
+                TooltipSystems::Placement.run_if(tooltips_enabled),
                 TransformSystem::TransformPropagate,
             )
                 .chain(),
+        );
+        app.add_systems(
+            PreUpdate,
+            sync_tooltip_settings
+                .run_if(resource_changed::<TooltipSettings>)
+                .before(TooltipSystems::Content),
         );
         app.add_plugins((context::plugin, placement::plugin, rich_text::plugin));
     }
@@ -136,6 +154,7 @@ impl Default for TooltipPlugin {
         Self {
             container: Entity::PLACEHOLDER,
             text: Entity::PLACEHOLDER,
+            enabled: true,
         }
     }
 }
@@ -149,15 +168,17 @@ impl Default for TooltipPlugin {
     derive(bevy_reflect::Reflect),
     reflect(Resource)
 )]
-pub struct PrimaryTooltip {
+pub struct TooltipSettings {
     /// The [`Entity`] ID of the UI node to be used as the primary tooltip.
     pub container: Entity,
     /// The [`Entity`] ID of the UI node to be used as the primary tooltip's text.
     pub text: Entity,
+    /// Whether or not tooltips will be displayed.
+    pub enabled: bool,
 }
 
-impl PrimaryTooltip {
-    fn new(world: &mut World, container: Entity, text: Entity) -> Self {
+impl TooltipSettings {
+    fn new(world: &mut World, container: Entity, text: Entity, enabled: bool) -> Self {
         let container = if container != Entity::PLACEHOLDER {
             container
         } else {
@@ -189,8 +210,31 @@ impl PrimaryTooltip {
                 .id()
         };
 
-        Self { container, text }
+        Self {
+            container,
+            text,
+            enabled,
+        }
     }
+}
+
+fn sync_tooltip_settings(mut commands: Commands, settings: Res<TooltipSettings>) {
+    if settings.enabled {
+        commands
+            .entity(settings.container)
+            .remove_recursive::<Children, Disabled>();
+    } else {
+        commands
+            .entity(settings.container)
+            .insert_recursive::<Children>(Disabled);
+    }
+}
+
+fn tooltips_enabled(
+    settings: Res<TooltipSettings>,
+    disabled_query: Query<(), With<Disabled>>,
+) -> bool {
+    settings.enabled && !disabled_query.contains(settings.container)
 }
 
 // TODO: Animation, wedge (like a speech bubble), easier content customization / icons.

@@ -1,5 +1,10 @@
 # Next version
 
+# Version 0.4.0
+
+- Renamed `PrimaryTooltip` -> `TooltipSettings` resource
+- Added `TooltipSettings::enabled` flag
+
 # Version 0.3.2
 
 - Fixed position rounding edge cases

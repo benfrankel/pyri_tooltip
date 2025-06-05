@@ -11,7 +11,7 @@ use bevy_ui::{ComputedNode, DefaultUiCamera, Node, UiRect, UiTargetCamera, Val};
 use tiny_bail::prelude::*;
 
 use crate::{
-    PrimaryTooltip, TooltipContent, TooltipSystems,
+    TooltipSettings, TooltipContent, TooltipSystems,
     context::{TooltipContext, TooltipState},
 };
 
@@ -101,7 +101,7 @@ impl Default for TooltipPlacement {
 fn place_tooltip(
     mut commands: Commands,
     ctx: Res<TooltipContext>,
-    primary: Res<PrimaryTooltip>,
+    primary: Res<TooltipSettings>,
     target_query: Query<(&GlobalTransform, &ComputedNode)>,
     target_camera_query: Query<&UiTargetCamera>,
     default_ui_camera: DefaultUiCamera,

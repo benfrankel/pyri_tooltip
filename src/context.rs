@@ -19,7 +19,7 @@ use bevy_ui::{Interaction, UiStack};
 use bevy_window::{PrimaryWindow, Window, WindowRef};
 use tiny_bail::prelude::*;
 
-use crate::{PrimaryTooltip, Tooltip, TooltipContent, TooltipSystems, rich_text::RichText};
+use crate::{Tooltip, TooltipContent, TooltipSettings, TooltipSystems, rich_text::RichText};
 
 pub(super) fn plugin(app: &mut App) {
     #[cfg(feature = "bevy_reflect")]
@@ -75,7 +75,7 @@ fn update_tooltip_context(
     mut ctx: ResMut<TooltipContext>,
     mut hide_tooltip: EventWriter<HideTooltip>,
     mut show_tooltip: EventWriter<ShowTooltip>,
-    primary: Res<PrimaryTooltip>,
+    primary: Res<TooltipSettings>,
     time: Res<Time>,
     ui_stack: Res<UiStack>,
     primary_window_query: Query<Entity, With<PrimaryWindow>>,
@@ -235,7 +235,7 @@ struct ShowTooltip;
 
 fn show_tooltip(
     mut ctx: ResMut<TooltipContext>,
-    primary: Res<PrimaryTooltip>,
+    primary: Res<TooltipSettings>,
     mut text_query: Query<&mut RichText>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
