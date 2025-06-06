@@ -1,5 +1,9 @@
 # Next version
 
+# Version 0.4.2
+
+- Fix tooltip not updating while targetting the same entity
+
 # Version 0.4.1
 
 - Fixed tooltip placement for non-unit DPI

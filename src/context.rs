@@ -150,7 +150,11 @@ fn update_tooltip_context(
             Interaction::None => continue,
             _ => (),
         };
-        if !(matches!(ctx.state, TooltipState::Inactive) || ctx.target != entity) {
+
+        // Still hovering the same target entity.
+        if ctx.target == entity && !matches!(ctx.state, TooltipState::Inactive) {
+            ctx.tooltip = tooltip.clone();
+            ctx.tooltip.dismissal.on_distance *= ctx.tooltip.dismissal.on_distance;
             found_target = true;
             break;
         }
@@ -186,9 +190,9 @@ fn update_tooltip_context(
         ctx.state = TooltipState::Inactive;
     }
 
-    // Update tooltip if it was activated, dismissed, or changed targets.
+    // Update tooltip if it has a target, or was activated, dismissed, or changed targets.
     let new_active = matches!(ctx.state, TooltipState::Active);
-    if old_active != new_active || old_target != ctx.target {
+    if old_active != new_active || old_target != ctx.target || found_target {
         if old_active {
             hide_tooltip.write(HideTooltip { entity: old_entity });
         }
