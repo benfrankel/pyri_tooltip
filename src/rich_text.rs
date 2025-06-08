@@ -15,7 +15,10 @@ use bevy_ecs::{
     schedule::{IntoScheduleConfigs as _, SystemSet},
     system::{Commands, Query},
 };
-use bevy_text::{Font, JustifyText, LineBreak, TextColor, TextFont, TextLayout, TextSpan};
+use bevy_text::{
+    Font, FontSmoothing, JustifyText, LineBreak, LineHeight, TextColor, TextFont, TextLayout,
+    TextSpan,
+};
 use bevy_ui::{UiSystem, widget::Text};
 
 pub(super) fn plugin(app: &mut App) {
@@ -61,7 +64,8 @@ fn sync_rich_text_spans(
                 TextFont {
                     font: section.style.font.clone(),
                     font_size: section.style.font_size,
-                    ..Default::default()
+                    line_height: rich_text.line_height,
+                    font_smoothing: rich_text.font_smoothing,
                 },
             ));
             section_idx += 1;
@@ -81,7 +85,8 @@ fn sync_rich_text_spans(
                     TextFont {
                         font: section.style.font.clone(),
                         font_size: section.style.font_size,
-                        ..Default::default()
+                        line_height: rich_text.line_height,
+                        font_smoothing: rich_text.font_smoothing,
                     },
                 ));
             }
@@ -101,6 +106,8 @@ pub struct RichText {
     pub sections: Vec<TextSection>,
     pub justify: JustifyText,
     pub linebreak_behavior: LineBreak,
+    pub line_height: LineHeight,
+    pub font_smoothing: FontSmoothing,
 }
 
 impl RichText {
@@ -125,6 +132,16 @@ impl RichText {
 
     pub const fn with_no_wrap(mut self) -> Self {
         self.linebreak_behavior = LineBreak::NoWrap;
+        self
+    }
+
+    pub const fn with_line_height(mut self, line_height: LineHeight) -> Self {
+        self.line_height = line_height;
+        self
+    }
+
+    pub const fn with_font_smoothing(mut self, font_smoothing: FontSmoothing) -> Self {
+        self.font_smoothing = font_smoothing;
         self
     }
 }

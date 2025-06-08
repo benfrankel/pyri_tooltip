@@ -1,5 +1,9 @@
 # Next version
 
+# Version 0.4.3
+
+- Add `line_height` and `font_smoothing` fields to `RichText` component
+
 # Version 0.4.2
 
 - Fix tooltip not updating while targetting the same entity
