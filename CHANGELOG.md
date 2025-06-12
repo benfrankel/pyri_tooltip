@@ -1,12 +1,14 @@
 # Next version
 
+- Improved transform propagation system ordering
+
 # Version 0.4.3
 
-- Add `line_height` and `font_smoothing` fields to `RichText` component
+- Added `line_height` and `font_smoothing` fields to `RichText` component
 
 # Version 0.4.2
 
-- Fix tooltip not updating while targetting the same entity
+- Fixed tooltip not updating while targetting the same entity
 
 # Version 0.4.1
 

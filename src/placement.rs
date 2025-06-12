@@ -6,7 +6,10 @@ use bevy_ecs::{
 use bevy_math::{Rect, Vec2};
 use bevy_render::camera::Camera;
 use bevy_sprite::Anchor;
-use bevy_transform::components::{GlobalTransform, Transform};
+use bevy_transform::{
+    components::{GlobalTransform, Transform},
+    systems::{mark_dirty_trees, propagate_parent_transforms, sync_simple_transforms},
+};
 use bevy_ui::{ComputedNode, DefaultUiCamera, Node, UiRect, UiTargetCamera, Val};
 use tiny_bail::prelude::*;
 
@@ -16,7 +19,17 @@ use crate::{
 };
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(PostUpdate, place_tooltip.in_set(TooltipSystems::Placement));
+    app.add_systems(
+        PostUpdate,
+        (
+            place_tooltip,
+            mark_dirty_trees,
+            propagate_parent_transforms,
+            sync_simple_transforms,
+        )
+            .chain()
+            .in_set(TooltipSystems::Placement),
+    );
 }
 
 /// The tooltip placement configuration.
