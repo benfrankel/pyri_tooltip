@@ -37,7 +37,9 @@ fn spawn_scene(mut commands: Commands) {
             tile_fixed(Anchor::BottomCenter),
             tile_fixed(Anchor::BottomRight),
             // Demonstrate cursor placement.
-            tile(Tooltip::cursor("Tooltip::cursor(text)"))
+            tile(Tooltip::cursor("Tooltip::cursor(text)")),
+            // Demonstrate cursor following.
+            tile(Tooltip::cursor("Tooltip::cursor(text).with_following()").with_following())
         ],
     ));
 }
@@ -45,7 +47,7 @@ fn spawn_scene(mut commands: Commands) {
 fn tile_fixed(anchor: Anchor) -> impl Bundle {
     tile(Tooltip::fixed(
         anchor,
-        format!("Tooltip::fixed({:?}, text)", anchor),
+        format!("Tooltip::fixed({anchor:?}, text)"),
     ))
 }
 

@@ -256,6 +256,8 @@ pub struct Tooltip {
     pub dismissal: TooltipDismissal,
     /// The conditions for skipping the next tooltip's activation delay.
     pub transfer: TooltipTransfer,
+    /// If the Tooltip will follow the cursor position.
+    pub follow_cursor: bool,
 }
 
 impl Tooltip {
@@ -267,6 +269,7 @@ impl Tooltip {
             activation: TooltipActivation::IMMEDIATE,
             dismissal: TooltipDismissal::NONE,
             transfer: TooltipTransfer::SHORT,
+            follow_cursor: false,
         }
     }
 
@@ -278,6 +281,7 @@ impl Tooltip {
             activation: TooltipActivation::IDLE,
             dismissal: TooltipDismissal::ON_CLICK,
             transfer: TooltipTransfer::NONE,
+            follow_cursor: false,
         }
     }
 
@@ -313,6 +317,12 @@ impl Tooltip {
     /// Set a custom [`TooltipTransfer`].
     pub fn with_transfer(mut self, transfer: impl Into<TooltipTransfer>) -> Self {
         self.transfer = transfer.into();
+        self
+    }
+
+    /// Set whether the tooltip should follow the cursor position.
+    pub fn with_following(mut self) -> Self {
+        self.follow_cursor = true;
         self
     }
 }
