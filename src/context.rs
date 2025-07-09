@@ -104,6 +104,13 @@ fn update_tooltip_context(
         cq!(window.focused);
         let cursor_pos = cq!(window.cursor_position());
 
+        // Make tooltip follow the cursor only if option is enabled.
+        if ctx.tooltip.follow_cursor {
+            if let Some(new_cursor_pos) = window.cursor_position() {
+                ctx.cursor_pos = new_cursor_pos;
+            }
+        }
+
         // Reset activation delay on cursor move.
         if ctx.cursor_pos != cursor_pos
             && matches!(ctx.state, TooltipState::Delayed)
