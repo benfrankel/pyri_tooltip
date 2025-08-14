@@ -37,7 +37,9 @@ fn spawn_scene(mut commands: Commands) {
             tile_fixed(Anchor::BottomCenter),
             tile_fixed(Anchor::BottomRight),
             // Demonstrate cursor placement.
-            tile(Tooltip::cursor("Tooltip::cursor(text)"))
+            tile(Tooltip::cursor("Tooltip::cursor(text)")),
+            // Demonstrate follow cursor placement.
+            tile(Tooltip::follow_cursor("Tooltip::follow_cursor(text)")),
         ],
     ));
 }

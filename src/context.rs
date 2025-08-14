@@ -19,7 +19,10 @@ use bevy_ui::{Interaction, UiStack};
 use bevy_window::{PrimaryWindow, Window, WindowRef};
 use tiny_bail::prelude::*;
 
-use crate::{Tooltip, TooltipContent, TooltipSettings, TooltipSystems, rich_text::RichText};
+use crate::{
+    Tooltip, TooltipContent, TooltipSettings, TooltipSystems, placement::TargetPoint,
+    rich_text::RichText,
+};
 
 pub(super) fn plugin(app: &mut App) {
     #[cfg(feature = "bevy_reflect")]
@@ -120,7 +123,12 @@ fn update_tooltip_context(
         }
 
         // Update cursor position.
-        if !matches!(ctx.state, TooltipState::Active) {
+        if !matches!(ctx.state, TooltipState::Active)
+            || matches!(
+                ctx.tooltip.placement.target_point,
+                TargetPoint::Cursor { follow: true }
+            )
+        {
             ctx.cursor_pos = cursor_pos;
         }
 

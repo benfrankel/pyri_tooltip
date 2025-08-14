@@ -281,6 +281,17 @@ impl Tooltip {
         }
     }
 
+    /// Create a new follow cursor `Tooltip`.
+    pub fn follow_cursor(content: impl Into<TooltipContent>) -> Self {
+        Self {
+            content: content.into(),
+            placement: TooltipPlacement::FOLLOW_CURSOR,
+            activation: TooltipActivation::IMMEDIATE,
+            dismissal: TooltipDismissal::NONE,
+            transfer: TooltipTransfer::NONE,
+        }
+    }
+
     /// Change the text justification.
     ///
     /// NOTE: This does nothing for custom tooltips.

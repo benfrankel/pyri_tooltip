@@ -1,6 +1,7 @@
 # Next version
 
 - Improved transform propagation system ordering
+- Added "follow cursor" placement
 
 # Version 0.4.3
 

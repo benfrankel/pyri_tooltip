@@ -32,16 +32,24 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
+/// A target point for a tooltip entity.
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
+pub enum TargetPoint {
+    Fixed(Anchor),
+    Cursor { follow: bool },
+}
+
 /// The tooltip placement configuration.
 ///
 /// Defaults to [`Self::CURSOR_CENTERED`].
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub struct TooltipPlacement {
-    /// The anchor point on the tooltip entity.
-    pub tooltip_anchor: Anchor,
-    /// The target position expressed as an anchor point on the target entity, or `None` to use the cursor position instead.
-    pub target_anchor: Option<Anchor>,
+    /// The tooltip entity's anchor point.
+    pub anchor_point: Anchor,
+    /// The target point where the anchor point should be placed.
+    pub target_point: TargetPoint,
     /// An additional horizontal offset for the tooltip entity.
     pub offset_x: Val,
     /// An additional vertical offset for the tooltip entity.
@@ -51,19 +59,37 @@ pub struct TooltipPlacement {
 }
 
 impl TooltipPlacement {
-    /// Show tooltip centered at cursor.
+    /// Show the tooltip centered at the cursor.
     pub const CURSOR_CENTERED: Self = Self {
-        tooltip_anchor: Anchor::Center,
-        target_anchor: None,
+        anchor_point: Anchor::Center,
+        target_point: TargetPoint::Cursor { follow: false },
         offset_x: Val::ZERO,
         offset_y: Val::ZERO,
         clamp_padding: UiRect::ZERO,
     };
 
-    /// Show tooltip at cursor.
+    /// Show the tooltip at the cursor.
     pub const CURSOR: Self = Self {
-        tooltip_anchor: Anchor::TopLeft,
-        target_anchor: None,
+        anchor_point: Anchor::TopLeft,
+        target_point: TargetPoint::Cursor { follow: false },
+        offset_x: Val::Px(16.0),
+        offset_y: Val::Px(16.0),
+        clamp_padding: UiRect::ZERO,
+    };
+
+    /// Show the tooltip centered at the cursor as it moves.
+    pub const FOLLOW_CURSOR_CENTERED: Self = Self {
+        anchor_point: Anchor::Center,
+        target_point: TargetPoint::Cursor { follow: true },
+        offset_x: Val::ZERO,
+        offset_y: Val::ZERO,
+        clamp_padding: UiRect::ZERO,
+    };
+
+    /// Show the tooltip at the cursor as it moves.
+    pub const FOLLOW_CURSOR: Self = Self {
+        anchor_point: Anchor::TopLeft,
+        target_point: TargetPoint::Cursor { follow: true },
         offset_x: Val::Px(16.0),
         offset_y: Val::Px(16.0),
         clamp_padding: UiRect::ZERO,
@@ -73,7 +99,7 @@ impl TooltipPlacement {
 impl From<Anchor> for TooltipPlacement {
     fn from(value: Anchor) -> Self {
         Self {
-            tooltip_anchor: match value {
+            anchor_point: match value {
                 Anchor::Center | Anchor::Custom(_) => Anchor::Center,
                 Anchor::BottomLeft => Anchor::TopRight,
                 Anchor::BottomCenter => Anchor::TopCenter,
@@ -84,7 +110,7 @@ impl From<Anchor> for TooltipPlacement {
                 Anchor::TopCenter => Anchor::BottomCenter,
                 Anchor::TopRight => Anchor::BottomLeft,
             },
-            target_anchor: Some(value),
+            target_point: TargetPoint::Fixed(value),
             offset_x: Val::ZERO,
             offset_y: Val::ZERO,
             clamp_padding: UiRect::ZERO,
@@ -95,8 +121,8 @@ impl From<Anchor> for TooltipPlacement {
 impl From<Vec2> for TooltipPlacement {
     fn from(value: Vec2) -> Self {
         Self {
-            tooltip_anchor: Anchor::TopLeft,
-            target_anchor: None,
+            anchor_point: Anchor::TopLeft,
+            target_point: TargetPoint::Cursor { follow: false },
             offset_x: Val::Px(value.x),
             offset_y: Val::Px(value.y),
             clamp_padding: UiRect::ZERO,
@@ -145,7 +171,7 @@ fn place_tooltip(
     let placement = &ctx.tooltip.placement;
 
     // Calculate target position.
-    let mut pos = if let Some(target_anchor) = placement.target_anchor {
+    let mut pos = if let TargetPoint::Fixed(target_anchor) = placement.target_point {
         let target_rect =
             Rect::from_center_size(target_gt.translation().truncate(), target_computed.size());
         target_rect.center() - target_rect.size() * target_anchor.as_vec() * Vec2::new(-1.0, 1.0)
@@ -156,7 +182,7 @@ fn place_tooltip(
     // Apply tooltip anchor to target position.
     let tooltip_rect = Rect::from_center_size(gt.translation().truncate(), computed.size());
     let tooltip_anchor =
-        tooltip_rect.size() * placement.tooltip_anchor.as_vec() * Vec2::new(-1.0, 1.0);
+        tooltip_rect.size() * placement.anchor_point.as_vec() * Vec2::new(-1.0, 1.0);
     pos += tooltip_anchor;
 
     // Resolve offset `Val`s.
