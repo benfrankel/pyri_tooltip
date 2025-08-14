@@ -45,7 +45,7 @@ fn spawn_scene(mut commands: Commands) {
 fn tile_fixed(anchor: Anchor) -> impl Bundle {
     tile(Tooltip::fixed(
         anchor,
-        format!("Tooltip::fixed({:?}, text)", anchor),
+        format!("Tooltip::fixed({anchor:?}, text)"),
     ))
 }
 
