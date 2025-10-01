@@ -16,13 +16,12 @@ use bevy_ecs::{
     system::{Commands, Query},
 };
 use bevy_text::{
-    Font, FontSmoothing, JustifyText, LineBreak, LineHeight, TextColor, TextFont, TextLayout,
-    TextSpan,
+    Font, FontSmoothing, Justify, LineBreak, LineHeight, TextColor, TextFont, TextLayout, TextSpan,
 };
-use bevy_ui::{UiSystem, widget::Text};
+use bevy_ui::{UiSystems, widget::Text};
 
 pub(super) fn plugin(app: &mut App) {
-    app.configure_sets(PostUpdate, RichTextSystems.before(UiSystem::Prepare));
+    app.configure_sets(PostUpdate, RichTextSystems.before(UiSystems::Prepare));
     app.add_systems(PostUpdate, sync_rich_text_spans.in_set(RichTextSystems));
 }
 
@@ -104,7 +103,7 @@ fn sync_rich_text_spans(
 )]
 pub struct RichText {
     pub sections: Vec<TextSection>,
-    pub justify: JustifyText,
+    pub justify: Justify,
     pub linebreak_behavior: LineBreak,
     pub line_height: LineHeight,
     pub font_smoothing: FontSmoothing,
@@ -125,7 +124,7 @@ impl RichText {
         }
     }
 
-    pub const fn with_justify(mut self, justify: JustifyText) -> Self {
+    pub const fn with_justify(mut self, justify: Justify) -> Self {
         self.justify = justify;
         self
     }

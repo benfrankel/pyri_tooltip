@@ -1,4 +1,8 @@
-# Next version
+# Version 0.6.0
+
+- Updated to Bevy 0.17
+
+# Version 0.5.0
 
 - Improved transform propagation system ordering
 - Added "follow cursor" placement

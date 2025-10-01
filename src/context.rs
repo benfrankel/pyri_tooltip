@@ -1,19 +1,16 @@
 use bevy_app::{App, PreUpdate};
+use bevy_camera::{Camera, RenderTarget, visibility::Visibility};
 #[cfg(feature = "bevy_reflect")]
 use bevy_ecs::reflect::ReflectResource;
 use bevy_ecs::{
     entity::Entity,
-    event::{Event, EventReader, EventWriter},
+    message::{Message, MessageReader, MessageWriter},
     query::With,
     resource::Resource,
-    schedule::{IntoScheduleConfigs as _, common_conditions::on_event},
+    schedule::{IntoScheduleConfigs as _, common_conditions::on_message},
     system::{Query, Res, ResMut},
 };
 use bevy_math::Vec2;
-use bevy_render::{
-    camera::{Camera, RenderTarget},
-    view::Visibility,
-};
 use bevy_time::Time;
 use bevy_ui::{Interaction, UiStack};
 use bevy_window::{PrimaryWindow, Window, WindowRef};
@@ -28,14 +25,14 @@ pub(super) fn plugin(app: &mut App) {
     #[cfg(feature = "bevy_reflect")]
     app.register_type::<TooltipContext>();
     app.init_resource::<TooltipContext>();
-    app.add_event::<HideTooltip>();
-    app.add_event::<ShowTooltip>();
+    app.add_message::<HideTooltip>();
+    app.add_message::<ShowTooltip>();
     app.add_systems(
         PreUpdate,
         (
             update_tooltip_context,
-            hide_tooltip.run_if(on_event::<HideTooltip>),
-            show_tooltip.run_if(on_event::<ShowTooltip>),
+            hide_tooltip.run_if(on_message::<HideTooltip>),
+            show_tooltip.run_if(on_message::<ShowTooltip>),
         )
             .chain()
             .in_set(TooltipSystems::Content),
@@ -74,10 +71,11 @@ impl Default for TooltipContext {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn update_tooltip_context(
     mut ctx: ResMut<TooltipContext>,
-    mut hide_tooltip: EventWriter<HideTooltip>,
-    mut show_tooltip: EventWriter<ShowTooltip>,
+    mut hide_tooltip: MessageWriter<HideTooltip>,
+    mut show_tooltip: MessageWriter<ShowTooltip>,
     primary: Res<TooltipSettings>,
     time: Res<Time>,
     ui_stack: Res<UiStack>,
@@ -224,15 +222,15 @@ pub(crate) enum TooltipState {
     Dismissed,
 }
 
-/// A buffered event sent when a tooltip should be hidden.
-#[derive(Event)]
+/// A buffered event message sent when a tooltip should be hidden.
+#[derive(Message)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 struct HideTooltip {
     entity: Entity,
 }
 
 fn hide_tooltip(
-    mut hide_tooltip: EventReader<HideTooltip>,
+    mut hide_tooltip: MessageReader<HideTooltip>,
     mut visibility_query: Query<&mut Visibility>,
 ) {
     for event in hide_tooltip.read() {
@@ -240,8 +238,8 @@ fn hide_tooltip(
     }
 }
 
-/// A buffered event sent when a tooltip should be shown.
-#[derive(Event)]
+/// A buffered event message sent when a tooltip should be shown.
+#[derive(Message)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 struct ShowTooltip;
 
@@ -260,5 +258,6 @@ fn show_tooltip(
         }
         TooltipContent::Custom(id) => id,
     };
+
     *r!(visibility_query.get_mut(entity)) = Visibility::Visible;
 }
