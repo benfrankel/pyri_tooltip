@@ -45,5 +45,4 @@ core_instead_of_alloc = "warn"
 
 # See more Bevy lints here: <https://thebevyflock.github.io/bevy_cli/bevy_lint/lints>.
 [package.metadata.bevy_lint]
-restriction = "warn"
 pedantic = "warn"
