@@ -175,9 +175,7 @@ fn place_tooltip(
     let mut pos = if let TargetPoint::Fixed(target_anchor) = placement.target_point {
         let target_rect =
             Rect::from_center_size(target_gt.translation().truncate(), target_computed.size());
-        ctx.cursor_pos
-            + (target_rect.center()
-                - target_rect.size() * target_anchor.as_vec() * Vec2::new(-1.0, 1.0))
+            target_rect.center() - target_rect.size() * target_anchor.as_vec() * Vec2::new(-1.0, 1.0))
     } else {
         ctx.cursor_pos
     };
