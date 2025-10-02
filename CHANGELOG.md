@@ -3,8 +3,8 @@
 # Version 0.5.0
 
 - **Updated to Bevy 0.17**
-- Improved transform propagation system ordering
 - Added "follow cursor" placement
+- Improved transform propagation system ordering
 
 # Version 0.4.3
 
@@ -12,7 +12,7 @@
 
 # Version 0.4.2
 
-- Fixed tooltip not updating while targetting the same entity
+- Fixed tooltip not updating while target entity stays the same
 
 # Version 0.4.1
 

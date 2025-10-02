@@ -83,7 +83,7 @@ use bevy_ecs::{
 };
 use bevy_sprite::Anchor;
 use bevy_text::Justify;
-use bevy_transform::{TransformSystems, components::Transform};
+use bevy_transform::TransformSystems;
 use bevy_ui::{
     BackgroundColor, GlobalZIndex, Interaction, Node, PositionType, UiRect, UiSystems, Val,
 };
@@ -113,14 +113,9 @@ pub struct TooltipPlugin {
 
 impl Plugin for TooltipPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        #[cfg(feature = "bevy_reflect")]
-        app.register_type::<TooltipSettings>();
         let settings =
             TooltipSettings::new(app.world_mut(), self.container, self.text, self.enabled);
         app.insert_resource(settings);
-
-        #[cfg(feature = "bevy_reflect")]
-        app.register_type::<Tooltip>();
 
         app.configure_sets(
             PreUpdate,
@@ -189,7 +184,6 @@ impl TooltipSettings {
                         padding: UiRect::all(Val::Px(8.0)),
                         ..Default::default()
                     },
-                    Transform::default(), // Required for tooltip positioning
                     BackgroundColor(Color::srgba(0.106, 0.118, 0.122, 0.9)),
                     Visibility::Hidden,
                     GlobalZIndex(999),
@@ -206,7 +200,6 @@ impl TooltipSettings {
                     Node::default(),
                     RichText::default(),
                     ChildOf(container),
-                    Transform::default(), // Required for tooltip positioning
                 ))
                 .id()
         };
@@ -297,10 +290,10 @@ impl Tooltip {
     /// Change the text justification.
     ///
     /// NOTE: This does nothing for custom tooltips.
-    pub fn with_justify(mut self, justify_text: Justify) -> Self {
+    pub fn with_justify(mut self, justify: Justify) -> Self {
         // TODO: Warn otherwise?
         if let TooltipContent::Primary(text) = &mut self.content {
-            text.justify = justify_text;
+            text.justify = justify;
         }
         self
     }

@@ -22,8 +22,6 @@ use crate::{
 };
 
 pub(super) fn plugin(app: &mut App) {
-    #[cfg(feature = "bevy_reflect")]
-    app.register_type::<TooltipContext>();
     app.init_resource::<TooltipContext>();
     app.add_message::<HideTooltip>();
     app.add_message::<ShowTooltip>();
@@ -221,7 +219,7 @@ pub(crate) enum TooltipState {
     Dismissed,
 }
 
-/// A buffered event message sent when a tooltip should be hidden.
+/// A message written when a tooltip should be hidden.
 #[derive(Message)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 struct HideTooltip {
@@ -237,7 +235,7 @@ fn hide_tooltip(
     }
 }
 
-/// A buffered event message sent when a tooltip should be shown.
+/// A message written when a tooltip should be shown.
 #[derive(Message)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 struct ShowTooltip;

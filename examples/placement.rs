@@ -25,18 +25,17 @@ fn spawn_scene(mut commands: Commands) {
             grid_template_columns: RepeatedGridTrack::auto(3),
             ..default()
         },
-        Transform::default(), // Required for tooltip positioning
         children![
             // Demonstrate fixed placement.
-            tile_fixed("top_left", Anchor::TOP_LEFT),
-            tile_fixed("top_center", Anchor::TOP_CENTER),
-            tile_fixed("top_right", Anchor::TOP_RIGHT),
-            tile_fixed("center_left", Anchor::CENTER_LEFT),
-            tile_fixed("center", Anchor::CENTER),
-            tile_fixed("center_right", Anchor::CENTER_RIGHT),
-            tile_fixed("bottom_left", Anchor::BOTTOM_LEFT),
-            tile_fixed("bottom_center", Anchor::BOTTOM_CENTER),
-            tile_fixed("bottom_right", Anchor::BOTTOM_RIGHT),
+            tile_fixed(Anchor::TOP_LEFT, "TOP_LEFT"),
+            tile_fixed(Anchor::TOP_CENTER, "TOP_CENTER"),
+            tile_fixed(Anchor::TOP_RIGHT, "TOP_RIGHT"),
+            tile_fixed(Anchor::CENTER_LEFT, "CENTER_LEFT"),
+            tile_fixed(Anchor::CENTER, "CENTER"),
+            tile_fixed(Anchor::CENTER_RIGHT, "CENTER_RIGHT"),
+            tile_fixed(Anchor::BOTTOM_LEFT, "BOTTOM_LEFT"),
+            tile_fixed(Anchor::BOTTOM_CENTER, "BOTTOM_CENTER"),
+            tile_fixed(Anchor::BOTTOM_RIGHT, "BOTTOM_RIGHT"),
             // Demonstrate cursor placement.
             tile(Tooltip::cursor("Tooltip::cursor(text)")),
             // Demonstrate follow cursor placement.
@@ -45,10 +44,10 @@ fn spawn_scene(mut commands: Commands) {
     ));
 }
 
-fn tile_fixed(anchor_title: &str, anchor: Anchor) -> impl Bundle {
+fn tile_fixed(anchor: Anchor, anchor_str: &str) -> impl Bundle {
     tile(Tooltip::fixed(
         anchor,
-        format!("Tooltip::fixed({anchor_title:?}, text)"),
+        format!("Tooltip::fixed(Anchor::{anchor_str}, text)"),
     ))
 }
 
@@ -60,7 +59,6 @@ fn tile(tooltip: Tooltip) -> impl Bundle {
             border: UiRect::all(Px(4.0)),
             ..default()
         },
-        Transform::default(), // Required for tooltip positioning
         BackgroundColor(Color::WHITE),
         BorderColor::all(Color::BLACK),
         BorderRadius::all(Px(8.0)),

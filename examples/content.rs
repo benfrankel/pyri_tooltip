@@ -27,7 +27,6 @@ fn spawn_scene(mut commands: Commands) {
                 row_gap: Px(8.0),
                 ..default()
             },
-            Transform::default(), // Required for tooltip positioning
             BackgroundColor(GRAY_700.into()),
             BorderColor::all(Color::WHITE),
             BorderRadius::all(Px(8.0)),
@@ -56,7 +55,6 @@ fn spawn_scene(mut commands: Commands) {
             column_gap: Px(8.0),
             ..default()
         },
-        Transform::default(), // Required for tooltip positioning
         children![tile("TooltipContent::Primary(text)"), tile(custom_content)],
     ));
 }
@@ -72,7 +70,6 @@ fn tile(content: impl Into<TooltipContent>) -> impl Bundle {
         BackgroundColor(Color::WHITE),
         BorderColor::all(Color::BLACK),
         BorderRadius::all(Px(8.0)),
-        Transform::default(), // Required for tooltip positioning
         Tooltip::fixed(Anchor::TOP_CENTER, content),
     )
 }

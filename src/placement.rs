@@ -4,13 +4,12 @@ use bevy_ecs::{
     schedule::IntoScheduleConfigs as _,
     system::{Commands, Query, Res},
 };
-use bevy_math::{Rect, Vec2};
+use bevy_math::{Affine2, Vec2};
 use bevy_sprite::Anchor;
-use bevy_transform::{
-    components::{GlobalTransform, Transform},
-    systems::{mark_dirty_trees, propagate_parent_transforms, sync_simple_transforms},
+use bevy_ui::{
+    ComputedNode, DefaultUiCamera, Node, UiGlobalTransform, UiRect, UiTargetCamera, Val,
+    ui_layout_system,
 };
-use bevy_ui::{ComputedNode, DefaultUiCamera, Node, UiRect, UiTargetCamera, Val};
 use tiny_bail::prelude::*;
 
 use crate::{
@@ -21,12 +20,7 @@ use crate::{
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         PostUpdate,
-        (
-            place_tooltip,
-            mark_dirty_trees,
-            propagate_parent_transforms,
-            sync_simple_transforms,
-        )
+        (place_tooltip, run_ui_layout_system)
             .chain()
             .in_set(TooltipSystems::Placement),
     );
@@ -99,18 +93,7 @@ impl TooltipPlacement {
 impl From<Anchor> for TooltipPlacement {
     fn from(value: Anchor) -> Self {
         Self {
-            anchor_point: match value {
-                Anchor::CENTER => Anchor::CENTER,
-                Anchor::BOTTOM_LEFT => Anchor::TOP_RIGHT,
-                Anchor::BOTTOM_CENTER => Anchor::TOP_CENTER,
-                Anchor::BOTTOM_RIGHT => Anchor::TOP_LEFT,
-                Anchor::CENTER_LEFT => Anchor::CENTER_RIGHT,
-                Anchor::CENTER_RIGHT => Anchor::CENTER_LEFT,
-                Anchor::TOP_LEFT => Anchor::BOTTOM_RIGHT,
-                Anchor::TOP_CENTER => Anchor::BOTTOM_CENTER,
-                Anchor::TOP_RIGHT => Anchor::BOTTOM_LEFT,
-                _ => Anchor::CENTER,
-            },
+            anchor_point: Anchor(-value.0),
             target_point: TargetPoint::Fixed(value),
             offset_x: Val::ZERO,
             offset_y: Val::ZERO,
@@ -142,19 +125,21 @@ fn place_tooltip(
     mut commands: Commands,
     ctx: Res<TooltipContext>,
     primary: Res<TooltipSettings>,
-    target_query: Query<(&GlobalTransform, &ComputedNode)>,
+    computed_node_query: Query<&ComputedNode>,
     target_camera_query: Query<&UiTargetCamera>,
     default_ui_camera: DefaultUiCamera,
     camera_query: Query<&Camera>,
-    mut tooltip_query: Query<(&mut Node, &mut Transform, &GlobalTransform, &ComputedNode)>,
+    mut node_query: Query<&mut Node>,
+    mut gt_query: Query<&mut UiGlobalTransform>,
 ) {
     rq!(matches!(ctx.state, TooltipState::Active));
-    let (target_gt, target_computed) = rq!(target_query.get(ctx.target));
+    let target_gt = rq!(gt_query.get(ctx.target));
+    let target_computed = rq!(computed_node_query.get(ctx.target));
     let entity = match &ctx.tooltip.content {
         TooltipContent::Primary(_) => primary.container,
         &TooltipContent::Custom(id) => id,
     };
-    let (mut node, mut transform, gt, computed) = r!(tooltip_query.get_mut(entity));
+    let computed = r!(computed_node_query.get(entity));
 
     // Identify the target camera and viewport rect.
     let camera_entity = r!(target_camera_query
@@ -173,30 +158,24 @@ fn place_tooltip(
 
     // Calculate target position.
     let mut pos = if let TargetPoint::Fixed(target_anchor) = placement.target_point {
-        let target_rect =
-            Rect::from_center_size(target_gt.translation().truncate(), target_computed.size());
-            target_rect.center() - target_rect.size() * target_anchor.as_vec() * Vec2::new(-1.0, 1.0))
+        target_gt.translation - target_computed.size * target_anchor.0 * Vec2::new(-1.0, 1.0)
     } else {
         ctx.cursor_pos
     };
 
     // Apply tooltip anchor to target position.
-    let tooltip_rect = Rect::from_center_size(gt.translation().truncate(), computed.size());
-    let tooltip_anchor =
-        tooltip_rect.size() * placement.anchor_point.as_vec() * Vec2::new(-1.0, 1.0);
-    pos += tooltip_anchor;
-
-    let physical_base_value = camera.physical_target_size().unwrap_or_default().as_vec2();
+    pos += computed.size * placement.anchor_point.0 * Vec2::new(-1.0, 1.0);
 
     // Resolve offset `Val`s.
     let size = viewport.size().as_vec2();
+    let scale = camera.target_scaling_factor().unwrap_or(1.0);
     let offset_x = placement
         .offset_x
-        .resolve(1.0, physical_base_value.x, physical_base_value)
+        .resolve(scale, size.x, size)
         .unwrap_or_default();
     let offset_y = placement
         .offset_y
-        .resolve(1.0, physical_base_value.y, physical_base_value)
+        .resolve(scale, size.y, size)
         .unwrap_or_default();
 
     // Apply offset.
@@ -209,21 +188,13 @@ fn place_tooltip(
         top,
         bottom,
     } = placement.clamp_padding;
-    let left = left
-        .resolve(1.0, physical_base_value.x, physical_base_value)
-        .unwrap_or_default();
-    let right = right
-        .resolve(1.0, physical_base_value.x, physical_base_value)
-        .unwrap_or_default();
-    let top = top
-        .resolve(1.0, physical_base_value.y, physical_base_value)
-        .unwrap_or_default();
-    let bottom = bottom
-        .resolve(1.0, physical_base_value.y, physical_base_value)
-        .unwrap_or_default();
+    let left = left.resolve(scale, size.x, size).unwrap_or_default();
+    let right = right.resolve(scale, size.x, size).unwrap_or_default();
+    let top = top.resolve(scale, size.x, size).unwrap_or_default();
+    let bottom = bottom.resolve(scale, size.x, size).unwrap_or_default();
 
     // Apply clamping.
-    let half_size = tooltip_rect.half_size();
+    let half_size = computed.size / 2.0;
     let mut left = half_size.x + left;
     let mut right = size.x - half_size.x - right;
     if left > right {
@@ -241,28 +212,33 @@ fn place_tooltip(
     pos = pos.clamp(Vec2::new(left, top), Vec2::new(right, bottom));
 
     // Apply rounding depending on parity of size.
-    if tooltip_rect.width().round() % 2.0 < f32::EPSILON {
+    if computed.size.x.round() % 2.0 < f32::EPSILON {
         pos.x = round_ties_up(pos.x);
     } else {
         pos.x = round_ties_up(pos.x + 0.5) - 0.5;
     }
-    if tooltip_rect.height().round() % 2.0 < f32::EPSILON {
+    if computed.size.y.round() % 2.0 < f32::EPSILON {
         pos.y = round_ties_up(pos.y);
     } else {
         pos.y = round_ties_up(pos.y + 0.5) - 0.5;
     }
 
-    // Set position via `Node`.
-    let top_left = pos - tooltip_rect.half_size();
-    node.top = Val::Px(top_left.y);
-    node.left = Val::Px(top_left.x);
-
-    // Set position via `Transform`.
+    // Set position via `UiGlobalTransform`.
     // This system has to run after `UiSystem::Layout` so that its size is calculated
     // from the updated text. However, that means that `Node` positioning will be
-    // delayed by 1 frame. As a workaround, update the `Transform` directly as well.
-    transform.translation.x = pos.x;
-    transform.translation.y = pos.y;
+    // delayed by 1 frame. As a workaround, update the `UiGlobalTransform` directly as well.
+    let mut gt = r!(gt_query.get_mut(entity));
+    *gt = {
+        let mut gt = Affine2::from(*gt);
+        gt.translation = pos;
+        gt.into()
+    };
+
+    // Set position via `Node`.
+    pos -= half_size;
+    let mut node = r!(node_query.get_mut(entity));
+    node.left = Val::Px(pos.x);
+    node.top = Val::Px(pos.y);
 }
 
 /// Taken from `bevy_ui`, used in `ui_layout_system`.
@@ -272,4 +248,10 @@ fn round_ties_up(value: f32) -> f32 {
     } else {
         value.ceil()
     }
+}
+
+// FIXME: This is a lazy workaround for `UiTransform` propagation being coupled to
+//        `ui_layout_system` in Bevy 0.17. It's inefficient but it works.
+fn run_ui_layout_system(world: &mut bevy_ecs::world::World) {
+    let _ = world.run_system_cached(ui_layout_system);
 }
