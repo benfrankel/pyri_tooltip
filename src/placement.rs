@@ -1,6 +1,8 @@
 use bevy_app::{App, PostUpdate};
 use bevy_camera::Camera;
 use bevy_ecs::{
+    entity::Entity,
+    hierarchy::Children,
     schedule::IntoScheduleConfigs as _,
     system::{Commands, Query, Res},
 };
@@ -8,7 +10,6 @@ use bevy_math::{Affine2, Vec2};
 use bevy_sprite::Anchor;
 use bevy_ui::{
     ComputedNode, DefaultUiCamera, Node, UiGlobalTransform, UiRect, UiTargetCamera, Val,
-    ui_layout_system,
 };
 use tiny_bail::prelude::*;
 
@@ -18,12 +19,7 @@ use crate::{
 };
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
-        PostUpdate,
-        (place_tooltip, run_ui_layout_system)
-            .chain()
-            .in_set(TooltipSystems::Placement),
-    );
+    app.add_systems(PostUpdate, place_tooltip.in_set(TooltipSystems::Placement));
 }
 
 /// A target point for a tooltip entity.
@@ -131,6 +127,7 @@ fn place_tooltip(
     camera_query: Query<&Camera>,
     mut node_query: Query<&mut Node>,
     mut gt_query: Query<&mut UiGlobalTransform>,
+    children_query: Query<&Children>,
 ) {
     rq!(matches!(ctx.state, TooltipState::Active));
     let target_gt = rq!(gt_query.get(ctx.target));
@@ -223,22 +220,19 @@ fn place_tooltip(
         pos.y = round_ties_up(pos.y + 0.5) - 0.5;
     }
 
+    // Set position via `Node`.
+    let top_left = pos - half_size;
+    let mut node = r!(node_query.get_mut(entity));
+    node.left = Val::Px(top_left.x);
+    node.top = Val::Px(top_left.y);
+
     // Set position via `UiGlobalTransform`.
     // This system has to run after `UiSystem::Layout` so that its size is calculated
     // from the updated text. However, that means that `Node` positioning will be
     // delayed by 1 frame. As a workaround, update the `UiGlobalTransform` directly as well.
-    let mut gt = r!(gt_query.get_mut(entity));
-    *gt = {
-        let mut gt = Affine2::from(*gt);
-        gt.translation = pos;
-        gt.into()
-    };
-
-    // Set position via `Node`.
-    pos -= half_size;
-    let mut node = r!(node_query.get_mut(entity));
-    node.left = Val::Px(pos.x);
-    node.top = Val::Px(pos.y);
+    let gt = r!(gt_query.get(entity));
+    let delta = Affine2::from_translation(pos - gt.translation);
+    update_gt_recursive(entity, delta, &mut gt_query, &children_query);
 }
 
 /// Taken from `bevy_ui`, used in `ui_layout_system`.
@@ -250,8 +244,15 @@ fn round_ties_up(value: f32) -> f32 {
     }
 }
 
-// FIXME: This is a lazy workaround for `UiTransform` propagation being coupled to
-//        `ui_layout_system` in Bevy 0.17. It's inefficient but it works.
-fn run_ui_layout_system(world: &mut bevy_ecs::world::World) {
-    let _ = world.run_system_cached(ui_layout_system);
+fn update_gt_recursive(
+    entity: Entity,
+    delta: Affine2,
+    gt_query: &mut Query<&mut UiGlobalTransform>,
+    children_query: &Query<&Children>,
+) {
+    let mut gt = rq!(gt_query.get_mut(entity));
+    *gt = (**gt * delta).into();
+    for &child in rq!(children_query.get(entity)) {
+        update_gt_recursive(child, delta, gt_query, children_query);
+    }
 }
