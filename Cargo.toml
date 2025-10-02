@@ -42,6 +42,7 @@ too_many_arguments = "allow"
 type_complexity = "allow"
 std_instead_of_core = "warn"
 std_instead_of_alloc = "warn"
+core_instead_of_alloc = "warn"
 
 # See more Bevy lints here: <https://thebevyflock.github.io/bevy_cli/bevy_lint/lints>.
 [package.metadata.bevy_lint]
