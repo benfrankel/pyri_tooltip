@@ -65,6 +65,7 @@ use alloc::{
 };
 
 use bevy_app::{Plugin, PostUpdate, PreUpdate};
+use bevy_camera::visibility::Visibility;
 use bevy_color::Color;
 #[cfg(feature = "bevy_reflect")]
 use bevy_ecs::reflect::{ReflectComponent, ReflectResource};
@@ -80,12 +81,11 @@ use bevy_ecs::{
     system::{Commands, Query, Res},
     world::World,
 };
-use bevy_render::view::Visibility;
 use bevy_sprite::Anchor;
-use bevy_text::JustifyText;
-use bevy_transform::TransformSystem;
+use bevy_text::Justify;
+use bevy_transform::{TransformSystems, components::Transform};
 use bevy_ui::{
-    BackgroundColor, GlobalZIndex, Interaction, Node, PositionType, UiRect, UiSystem, Val,
+    BackgroundColor, GlobalZIndex, Interaction, Node, PositionType, UiRect, UiSystems, Val,
 };
 
 pub use placement::TooltipPlacement;
@@ -125,7 +125,7 @@ impl Plugin for TooltipPlugin {
         app.configure_sets(
             PreUpdate,
             (
-                UiSystem::Focus,
+                UiSystems::Focus,
                 TooltipSystems::Content.run_if(tooltips_enabled),
             )
                 .chain(),
@@ -133,7 +133,7 @@ impl Plugin for TooltipPlugin {
         app.configure_sets(
             PostUpdate,
             (
-                TransformSystem::TransformPropagate,
+                TransformSystems::Propagate,
                 TooltipSystems::Placement.run_if(tooltips_enabled),
             )
                 .chain(),
@@ -189,6 +189,7 @@ impl TooltipSettings {
                         padding: UiRect::all(Val::Px(8.0)),
                         ..Default::default()
                     },
+                    Transform::default(), // Required for tooltip positioning
                     BackgroundColor(Color::srgba(0.106, 0.118, 0.122, 0.9)),
                     Visibility::Hidden,
                     GlobalZIndex(999),
@@ -205,6 +206,7 @@ impl TooltipSettings {
                     Node::default(),
                     RichText::default(),
                     ChildOf(container),
+                    Transform::default(), // Required for tooltip positioning
                 ))
                 .id()
         };
@@ -295,7 +297,7 @@ impl Tooltip {
     /// Change the text justification.
     ///
     /// NOTE: This does nothing for custom tooltips.
-    pub fn with_justify(mut self, justify_text: JustifyText) -> Self {
+    pub fn with_justify(mut self, justify_text: Justify) -> Self {
         // TODO: Warn otherwise?
         if let TooltipContent::Primary(text) = &mut self.content {
             text.justify = justify_text;

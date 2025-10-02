@@ -1,10 +1,10 @@
 use bevy_app::{App, PostUpdate};
+use bevy_camera::Camera;
 use bevy_ecs::{
     schedule::IntoScheduleConfigs as _,
     system::{Commands, Query, Res},
 };
 use bevy_math::{Rect, Vec2};
-use bevy_render::camera::Camera;
 use bevy_sprite::Anchor;
 use bevy_transform::{
     components::{GlobalTransform, Transform},
@@ -61,7 +61,7 @@ pub struct TooltipPlacement {
 impl TooltipPlacement {
     /// Show the tooltip centered at the cursor.
     pub const CURSOR_CENTERED: Self = Self {
-        anchor_point: Anchor::Center,
+        anchor_point: Anchor::CENTER,
         target_point: TargetPoint::Cursor { follow: false },
         offset_x: Val::ZERO,
         offset_y: Val::ZERO,
@@ -70,7 +70,7 @@ impl TooltipPlacement {
 
     /// Show the tooltip at the cursor.
     pub const CURSOR: Self = Self {
-        anchor_point: Anchor::TopLeft,
+        anchor_point: Anchor::TOP_LEFT,
         target_point: TargetPoint::Cursor { follow: false },
         offset_x: Val::Px(16.0),
         offset_y: Val::Px(16.0),
@@ -79,7 +79,7 @@ impl TooltipPlacement {
 
     /// Show the tooltip centered at the cursor as it moves.
     pub const FOLLOW_CURSOR_CENTERED: Self = Self {
-        anchor_point: Anchor::Center,
+        anchor_point: Anchor::CENTER,
         target_point: TargetPoint::Cursor { follow: true },
         offset_x: Val::ZERO,
         offset_y: Val::ZERO,
@@ -88,7 +88,7 @@ impl TooltipPlacement {
 
     /// Show the tooltip at the cursor as it moves.
     pub const FOLLOW_CURSOR: Self = Self {
-        anchor_point: Anchor::TopLeft,
+        anchor_point: Anchor::TOP_LEFT,
         target_point: TargetPoint::Cursor { follow: true },
         offset_x: Val::Px(16.0),
         offset_y: Val::Px(16.0),
@@ -100,15 +100,16 @@ impl From<Anchor> for TooltipPlacement {
     fn from(value: Anchor) -> Self {
         Self {
             anchor_point: match value {
-                Anchor::Center | Anchor::Custom(_) => Anchor::Center,
-                Anchor::BottomLeft => Anchor::TopRight,
-                Anchor::BottomCenter => Anchor::TopCenter,
-                Anchor::BottomRight => Anchor::TopLeft,
-                Anchor::CenterLeft => Anchor::CenterRight,
-                Anchor::CenterRight => Anchor::CenterLeft,
-                Anchor::TopLeft => Anchor::BottomRight,
-                Anchor::TopCenter => Anchor::BottomCenter,
-                Anchor::TopRight => Anchor::BottomLeft,
+                Anchor::CENTER => Anchor::CENTER,
+                Anchor::BOTTOM_LEFT => Anchor::TOP_RIGHT,
+                Anchor::BOTTOM_CENTER => Anchor::TOP_CENTER,
+                Anchor::BOTTOM_RIGHT => Anchor::TOP_LEFT,
+                Anchor::CENTER_LEFT => Anchor::CENTER_RIGHT,
+                Anchor::CENTER_RIGHT => Anchor::CENTER_LEFT,
+                Anchor::TOP_LEFT => Anchor::BOTTOM_RIGHT,
+                Anchor::TOP_CENTER => Anchor::BOTTOM_CENTER,
+                Anchor::TOP_RIGHT => Anchor::BOTTOM_LEFT,
+                _ => Anchor::CENTER,
             },
             target_point: TargetPoint::Fixed(value),
             offset_x: Val::ZERO,
@@ -121,7 +122,7 @@ impl From<Anchor> for TooltipPlacement {
 impl From<Vec2> for TooltipPlacement {
     fn from(value: Vec2) -> Self {
         Self {
-            anchor_point: Anchor::TopLeft,
+            anchor_point: Anchor::TOP_LEFT,
             target_point: TargetPoint::Cursor { follow: false },
             offset_x: Val::Px(value.x),
             offset_y: Val::Px(value.y),
@@ -174,7 +175,7 @@ fn place_tooltip(
     let mut pos = if let TargetPoint::Fixed(target_anchor) = placement.target_point {
         let target_rect =
             Rect::from_center_size(target_gt.translation().truncate(), target_computed.size());
-        target_rect.center() - target_rect.size() * target_anchor.as_vec() * Vec2::new(-1.0, 1.0)
+            target_rect.center() - target_rect.size() * target_anchor.as_vec() * Vec2::new(-1.0, 1.0))
     } else {
         ctx.cursor_pos
     };
@@ -185,10 +186,18 @@ fn place_tooltip(
         tooltip_rect.size() * placement.anchor_point.as_vec() * Vec2::new(-1.0, 1.0);
     pos += tooltip_anchor;
 
+    let physical_base_value = camera.physical_target_size().unwrap_or_default().as_vec2();
+
     // Resolve offset `Val`s.
     let size = viewport.size().as_vec2();
-    let offset_x = placement.offset_x.resolve(size.x, size).unwrap_or_default();
-    let offset_y = placement.offset_y.resolve(size.y, size).unwrap_or_default();
+    let offset_x = placement
+        .offset_x
+        .resolve(1.0, physical_base_value.x, physical_base_value)
+        .unwrap_or_default();
+    let offset_y = placement
+        .offset_y
+        .resolve(1.0, physical_base_value.y, physical_base_value)
+        .unwrap_or_default();
 
     // Apply offset.
     pos += Vec2::new(offset_x, offset_y);
@@ -200,10 +209,18 @@ fn place_tooltip(
         top,
         bottom,
     } = placement.clamp_padding;
-    let left = left.resolve(size.x, size).unwrap_or_default();
-    let right = right.resolve(size.x, size).unwrap_or_default();
-    let top = top.resolve(size.x, size).unwrap_or_default();
-    let bottom = bottom.resolve(size.x, size).unwrap_or_default();
+    let left = left
+        .resolve(1.0, physical_base_value.x, physical_base_value)
+        .unwrap_or_default();
+    let right = right
+        .resolve(1.0, physical_base_value.x, physical_base_value)
+        .unwrap_or_default();
+    let top = top
+        .resolve(1.0, physical_base_value.y, physical_base_value)
+        .unwrap_or_default();
+    let bottom = bottom
+        .resolve(1.0, physical_base_value.y, physical_base_value)
+        .unwrap_or_default();
 
     // Apply clamping.
     let half_size = tooltip_rect.half_size();
