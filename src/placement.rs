@@ -137,7 +137,6 @@ impl Default for TooltipPlacement {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 // TODO: Only run on `ShowTooltip` event OR if using target anchor + target has moved or resized.
 fn place_tooltip(
     mut commands: Commands,
