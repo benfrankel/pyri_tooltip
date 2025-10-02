@@ -71,7 +71,6 @@ impl Default for TooltipContext {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn update_tooltip_context(
     mut ctx: ResMut<TooltipContext>,
     mut hide_tooltip: MessageWriter<HideTooltip>,
