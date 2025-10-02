@@ -126,7 +126,7 @@ fn place_tooltip(
     default_ui_camera: DefaultUiCamera,
     camera_query: Query<&Camera>,
     mut node_query: Query<&mut Node>,
-    mut gt_query: Query<&mut UiGlobalTransform>,
+    gt_query: Query<&mut UiGlobalTransform>,
     children_query: Query<&Children>,
 ) {
     rq!(matches!(ctx.state, TooltipState::Active));
@@ -232,7 +232,7 @@ fn place_tooltip(
     // delayed by 1 frame. As a workaround, update the `UiGlobalTransform` directly as well.
     let gt = r!(gt_query.get(entity));
     let delta = Affine2::from_translation(pos - gt.translation);
-    update_gt_recursive(entity, delta, &mut gt_query, &children_query);
+    update_gt_recursive(entity, delta, gt_query, children_query);
 }
 
 /// Taken from `bevy_ui`, used in `ui_layout_system`.
@@ -247,12 +247,12 @@ fn round_ties_up(value: f32) -> f32 {
 fn update_gt_recursive(
     entity: Entity,
     delta: Affine2,
-    gt_query: &mut Query<&mut UiGlobalTransform>,
-    children_query: &Query<&Children>,
+    mut gt_query: Query<&mut UiGlobalTransform>,
+    children_query: Query<&Children>,
 ) {
     let mut gt = rq!(gt_query.get_mut(entity));
     *gt = (**gt * delta).into();
     for &child in rq!(children_query.get(entity)) {
-        update_gt_recursive(child, delta, gt_query, children_query);
+        update_gt_recursive(child, delta, gt_query.reborrow(), children_query);
     }
 }
