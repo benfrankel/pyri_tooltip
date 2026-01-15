@@ -1,5 +1,5 @@
 use bevy_app::{App, PreUpdate};
-use bevy_camera::{Camera, RenderTarget, visibility::Visibility};
+use bevy_camera::visibility::Visibility;
 #[cfg(feature = "bevy_reflect")]
 use bevy_ecs::reflect::ReflectResource;
 use bevy_ecs::{
@@ -13,7 +13,7 @@ use bevy_ecs::{
 use bevy_math::Vec2;
 use bevy_time::Time;
 use bevy_ui::{Interaction, UiStack};
-use bevy_window::{PrimaryWindow, Window, WindowRef};
+use bevy_window::{PrimaryWindow, Window};
 use tiny_bail::prelude::*;
 
 use crate::{
@@ -76,9 +76,7 @@ fn update_tooltip_context(
     primary: Res<TooltipSettings>,
     time: Res<Time>,
     ui_stack: Res<UiStack>,
-    primary_window_query: Query<Entity, With<PrimaryWindow>>,
-    window_query: Query<&Window>,
-    camera_query: Query<&Camera>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
     interaction_query: Query<(&Tooltip, &Interaction)>,
 ) {
     let old_active = matches!(ctx.state, TooltipState::Active);
@@ -90,15 +88,7 @@ fn update_tooltip_context(
 
     // TODO: Reconsider whether this is the right way to detect cursor movement.
     // Detect cursor movement.
-    for camera in &camera_query {
-        let RenderTarget::Window(window) = camera.target else {
-            continue;
-        };
-        let window = match window {
-            WindowRef::Primary => cq!(primary_window_query.single()),
-            WindowRef::Entity(id) => id,
-        };
-        let window = c!(window_query.get(window));
+    for window in &window_query {
         cq!(window.focused);
         let cursor_pos = cq!(window.cursor_position());
 

@@ -63,8 +63,8 @@ fn sync_rich_text_spans(
                 TextFont {
                     font: section.style.font.clone(),
                     font_size: section.style.font_size,
-                    line_height: rich_text.line_height,
                     font_smoothing: rich_text.font_smoothing,
+                    ..Default::default()
                 },
             ));
             section_idx += 1;
@@ -84,8 +84,8 @@ fn sync_rich_text_spans(
                     TextFont {
                         font: section.style.font.clone(),
                         font_size: section.style.font_size,
-                        line_height: rich_text.line_height,
                         font_smoothing: rich_text.font_smoothing,
+                        ..Default::default()
                     },
                 ));
             }

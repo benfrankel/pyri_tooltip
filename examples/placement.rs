@@ -57,11 +57,11 @@ fn tile(tooltip: Tooltip) -> impl Bundle {
             width: Px(64.0),
             height: Px(64.0),
             border: UiRect::all(Px(4.0)),
+            border_radius: BorderRadius::all(Px(8.0)),
             ..default()
         },
         BackgroundColor(Color::WHITE),
         BorderColor::all(Color::BLACK),
-        BorderRadius::all(Px(8.0)),
         tooltip,
     )
 }

@@ -2,6 +2,10 @@
 
 - Replaced slow tooltip placement workaround with a more efficient workaround
 
+# Version 0.6.0
+
+- **Updated to Bevy 0.18**
+
 # Version 0.5.0
 
 - **Updated to Bevy 0.17**
