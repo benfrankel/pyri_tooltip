@@ -25,11 +25,11 @@ fn spawn_scene(mut commands: Commands) {
                 border: UiRect::all(Px(4.0)),
                 flex_direction: FlexDirection::Column,
                 row_gap: Px(8.0),
+                border_radius: BorderRadius::all(Px(8.0)),
                 ..default()
             },
             BackgroundColor(GRAY_700.into()),
             BorderColor::all(Color::WHITE),
-            BorderRadius::all(Px(8.0)),
             // Hide the tooltip content initially.
             Visibility::Hidden,
             // Display the tooltip content in front of its target.
@@ -65,11 +65,11 @@ fn tile(content: impl Into<TooltipContent>) -> impl Bundle {
             width: Px(64.0),
             height: Px(64.0),
             border: UiRect::all(Px(4.0)),
+            border_radius: BorderRadius::all(Px(8.0)),
             ..default()
         },
         BackgroundColor(Color::WHITE),
         BorderColor::all(Color::BLACK),
-        BorderRadius::all(Px(8.0)),
         Tooltip::fixed(Anchor::TOP_CENTER, content),
     )
 }

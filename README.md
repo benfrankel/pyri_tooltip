@@ -12,6 +12,7 @@ Read the [documentation](https://docs.rs/pyri_tooltip/latest/pyri_tooltip) for m
 
 | `bevy` version | `pyri_tooltip` version |
 | -------------- | ---------------------- |
+| 0.18           | 0.6                    |
 | 0.17           | 0.5                    |
 | 0.16           | 0.3, 0.4               |
 | 0.15           | 0.2                    |

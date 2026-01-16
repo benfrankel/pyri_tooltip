@@ -76,10 +76,9 @@ fn update_tooltip_context(
     primary: Res<TooltipSettings>,
     time: Res<Time>,
     ui_stack: Res<UiStack>,
-    primary_window_query: Query<Entity, With<PrimaryWindow>>,
-    window_query: Query<&Window>,
-    camera_query: Query<&Camera>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
     interaction_query: Query<(&Tooltip, &Interaction)>,
+    camera_query: Query<&RenderTarget, With<Camera>>,
 ) {
     let old_active = matches!(ctx.state, TooltipState::Active);
     let old_target = ctx.target;
@@ -90,17 +89,20 @@ fn update_tooltip_context(
 
     // TODO: Reconsider whether this is the right way to detect cursor movement.
     // Detect cursor movement.
-    for camera in &camera_query {
-        let RenderTarget::Window(window) = camera.target else {
+    for target_camera in &camera_query {
+        let RenderTarget::Window(window) = target_camera else {
             continue;
         };
+
         let window = match window {
-            WindowRef::Primary => cq!(primary_window_query.single()),
-            WindowRef::Entity(id) => id,
+            WindowRef::Primary => cq!(window_query.single()),
+            WindowRef::Entity(id) => c!(window_query.get(*id)),
         };
-        let window = c!(window_query.get(window));
-        cq!(window.focused);
-        let cursor_pos = cq!(window.cursor_position());
+
+        let cursor_pos = match window.cursor_position() {
+            Some(pos) => pos,
+            None => continue,
+        };
 
         // Reset activation delay on cursor move.
         if ctx.cursor_pos != cursor_pos
