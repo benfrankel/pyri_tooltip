@@ -3,7 +3,6 @@
 use alloc::{string::String, vec, vec::Vec};
 
 use bevy_app::{App, PostUpdate};
-use bevy_asset::Handle;
 use bevy_color::Color;
 #[cfg(feature = "bevy_reflect")]
 use bevy_ecs::reflect::ReflectComponent;
@@ -16,7 +15,8 @@ use bevy_ecs::{
     system::{Commands, Query},
 };
 use bevy_text::{
-    Font, FontSmoothing, Justify, LineBreak, LineHeight, TextColor, TextFont, TextLayout, TextSpan,
+    FontSize, FontSmoothing, FontSource, Justify, LineBreak, LineHeight, TextColor, TextFont,
+    TextLayout, TextSpan,
 };
 use bevy_ui::{UiSystems, widget::Text};
 
@@ -193,8 +193,8 @@ impl From<String> for TextSection {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy_reflect::Reflect))]
 pub struct TextStyle {
-    pub font: Handle<Font>,
-    pub font_size: f32,
+    pub font: FontSource,
+    pub font_size: FontSize,
     pub color: Color,
 }
 
@@ -202,7 +202,7 @@ impl Default for TextStyle {
     fn default() -> Self {
         Self {
             font: Default::default(),
-            font_size: 20.0,
+            font_size: FontSize::Px(20.0),
             color: Color::WHITE,
         }
     }
