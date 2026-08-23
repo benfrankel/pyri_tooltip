@@ -1,6 +1,10 @@
 # Next version
 
+# Version 0.7.0
+
+- **Updated to Bevy 0.19**
 - Replaced slow tooltip placement workaround with a more efficient workaround
+- Replaced `Time` with `Time<Real>` for tooltip timing
 
 # Version 0.6.0
 

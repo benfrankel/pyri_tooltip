@@ -11,7 +11,7 @@ use bevy_ecs::{
     system::{Query, Res, ResMut},
 };
 use bevy_math::Vec2;
-use bevy_time::Time;
+use bevy_time::{Real, Time};
 use bevy_ui::{Interaction, UiStack};
 use bevy_window::{PrimaryWindow, Window, WindowRef};
 use tiny_bail::prelude::*;
@@ -74,7 +74,7 @@ fn update_tooltip_context(
     mut hide_tooltip: MessageWriter<HideTooltip>,
     mut show_tooltip: MessageWriter<ShowTooltip>,
     primary: Res<TooltipSettings>,
-    time: Res<Time>,
+    time: Res<Time<Real>>,
     ui_stack: Res<UiStack>,
     primary_window_query: Query<Entity, With<PrimaryWindow>>,
     window_query: Query<&Window>,
